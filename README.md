@@ -4,6 +4,8 @@ Ce projet transforme le téléphone en **manette Xbox 360** pour ce PC, sans rie
 téléphone. Le PC sert une page web, le téléphone l'ouvre dans Chrome, et chaque toucher
 pilote une manette virtuelle que Windows et les jeux voient comme une vraie manette.
 
+![La manette sur le téléphone, en paysage](docs/capture.jpg)
+
 ```
 Téléphone (Chrome) ──WebSocket, Wi-Fi local──▶ serveur.py ──vgamepad──▶ ViGEmBus ──▶ le jeu
 ```
