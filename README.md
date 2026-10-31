@@ -1,230 +1,86 @@
 # Manette Pixel
 
-Ton téléphone devient une **manette Xbox 360** pour ton PC Windows. Tu n'as rien à
-installer sur le téléphone : il ouvre une page dans Chrome, et les jeux voient une vraie
-manette Xbox.
+*English · [Français](README.fr.md)*
 
-![La manette sur le téléphone, en paysage](docs/capture.jpg)
+Turn your phone into an **Xbox 360 controller** for your Windows PC. You don't install
+anything on the phone: it opens a web page in Chrome, and games see a real Xbox controller.
 
-- Joysticks, gâchettes, croix, A B X Y, bouton Xbox, et les vibrations du jeu sur le téléphone.
-- Par **câble USB** (recommandé) ou par **Wi-Fi**.
-- Jusqu'à **4 téléphones**, donc 4 joueurs.
+![The controller on the phone, in landscape](docs/capture.jpg)
 
----
+- Sticks, triggers, bumpers, D-pad, A B X Y, the Xbox button, and in-game rumble on the phone
+- Over **USB cable** (recommended) or **Wi-Fi**
+- Up to **4 phones**, so 4 players
 
-## Ce qu'il te faut
+## Requirements
 
-- Un PC **Windows 10 ou 11**, connecté à Internet pour la première installation.
-- Un téléphone **Android** avec Chrome. Un iPhone peut marcher en Wi-Fi, sans vibrations,
-  mais ce n'est pas testé.
-- Un **câble USB** qui transmet les données, pas un câble de charge seule. Un câble de
-  chargeur rapide d'origine convient en général. Sans câble, il faut un **Wi-Fi** commun.
+- Windows 10 or 11, with internet access for the first setup
+- An Android phone with Chrome. An iPhone may work over Wi-Fi without rumble; this is untested.
+- A USB **data** cable, or a Wi-Fi network shared by the phone and the PC
 
-Python et le pilote de manette **s'installent tout seuls** s'ils manquent.
+Python and the controller driver are installed automatically if they're missing.
 
----
+## Setup (once)
 
-## Installation (une seule fois, 5 minutes)
+1. **Download**: *Code → Download ZIP*, then **right-click → Extract All**. It won't run
+   from inside the zip.
+2. **Run `lancer.bat`**. On the first run:
+   - *Windows protected your PC*: click **More info → Run anyway**.
+   - The **ViGEmBus** driver installer opens: accept, **Install**, **Yes**.
+   - The **firewall** asks about Python: tick **both** private and public networks, then **Allow**.
 
-### 1. Télécharger le projet
+   It's ready when a QR code appears. Keep that window open while you play.
+3. **For the cable** (recommended): on the phone, tap *Settings → About phone → Build number*
+   7 times. Then turn on *Settings → System → Developer options → **USB debugging***.
 
-Sur la page GitHub du projet : bouton vert **Code → Download ZIP**.
+## Play
 
-Ensuite, **clic droit sur le .zip → Extraire tout… → Extraire**. C'est important : un
-double-clic sur le .zip ne fait que regarder dedans, et rien ne marche depuis là. Range
-le dossier extrait où tu veux, par exemple dans *Documents*.
+**USB cable.** Run `lancer.bat` and plug in the phone. Accept *Allow USB debugging*. The
+controller **opens by itself** in Chrome on the phone. Tap **Play**. The cable works on any
+network, even when the phone shares its mobile data with the PC, and it has the lowest
+latency.
 
-### 2. Lancer `lancer.bat`
+**Wi-Fi.** The phone and the PC must be on the same Wi-Fi. Run `lancer.bat` and scan the
+QR code shown on the PC with the phone camera. The QR code holds the PC's Wi-Fi address and
+a secret key. `http://localhost:8765` only works over the cable.
 
-Double-clic sur **`lancer.bat`** dans le dossier extrait. Au premier lancement, plusieurs
-fenêtres peuvent s'ouvrir, et c'est normal :
+Use the **cable** when the phone is the PC's hotspot, or on school, hotel, office or public
+Wi-Fi: these networks block devices from reaching each other.
 
-| Ce qui s'affiche | Ce qu'il faut faire |
+## Controls
+
+| | |
 |---|---|
-| « Windows a protégé votre ordinateur » (fenêtre bleue) | **Informations complémentaires → Exécuter quand même**. Windows affiche ça pour tout script téléchargé. |
-| Le terminal installe Python et les composants | Rien. Attends 1 à 2 min, il faut Internet. |
-| L'installation de **ViGEmBus** (le pilote de manette virtuelle) | Coche *I accept*, clique sur **Install**, puis **Oui** quand Windows demande l'autorisation, et enfin **Finish**. |
-| Le **Pare-feu Windows** demande s'il faut autoriser Python | Coche **les deux cases** (réseaux privés *et* publics), puis **Autoriser**. Sans ça, le Wi-Fi ne marchera pas. |
+| Sticks | Floating: the centre is set where your thumb lands |
+| L3 / R3 | Double-tap and hold the stick |
+| D-pad, A B X Y | Slide your thumb between buttons. Pressing between two face buttons presses both. |
+| Status pill | Shows the player number and latency. Tap it for settings: size, opacity, dead zone, rumble… |
+| Android back gesture | Pauses the game; it doesn't leave the page |
 
-Si l'installation du pilote demande de redémarrer le PC, redémarre-le puis relance `lancer.bat`.
+## Troubleshooting
 
-Quand le terminal affiche un QR code, **c'est prêt**. Garde cette fenêtre ouverte pendant
-que tu joues : la fermer arrête la manette.
-
-### 3. Préparer le téléphone pour le câble (recommandé)
-
-À faire une seule fois. Ça permet à Chrome de joindre le PC par le câble.
-
-1. *Paramètres → À propos du téléphone* : touche **7 fois** la ligne **Numéro de build**.
-   Le téléphone te dit « Vous êtes maintenant développeur ». Sur un Samsung, la ligne est
-   dans *Infos sur le logiciel*.
-2. *Paramètres → Système → Options pour les développeurs* : active **Débogage USB**.
-
-> Tu peux sauter cette étape si tu utilises seulement le Wi-Fi.
-
----
-
-## Jouer
-
-### Par câble USB : le plus simple et le plus fiable
-
-1. Lance **`lancer.bat`**.
-2. Branche le téléphone au PC.
-3. Au premier branchement, le téléphone demande **« Autoriser le débogage USB ? »**. Coche
-   *Toujours autoriser sur cet ordinateur*, puis **Autoriser**.
-4. **La manette s'ouvre toute seule** dans Chrome sur le téléphone. Touche **Jouer**.
-
-Le câble marche sur n'importe quel réseau, même sans Wi-Fi, ou quand le téléphone partage
-sa 4G/5G avec le PC. La latence est aussi la plus basse, et le téléphone se recharge
-pendant la partie.
-
-### Par Wi-Fi
-
-1. Le PC et le téléphone doivent être sur **le même Wi-Fi**.
-2. Lance **`lancer.bat`** : une page avec un QR code s'ouvre sur le PC.
-3. Scanne le QR code avec l'**appareil photo** du téléphone, ouvre le lien, puis touche **Jouer**.
-
-Le QR code contient l'adresse du PC sur le Wi-Fi (par exemple
-`http://192.168.1.20:8765/?k=…`) et un code secret. Le code empêche les autres appareils
-du Wi-Fi de prendre la manette. L'adresse `http://localhost:8765` ne marche **qu'avec le
-câble** : sur le téléphone, « localhost » désigne le téléphone lui-même, et c'est le câble
-qui le relie au PC.
-
-### Lequel choisir ?
-
-| Situation | Méthode |
+| Symptom | Fix |
 |---|---|
-| Wi-Fi de la maison, sans câble sous la main | Wi-Fi |
-| Le téléphone partage sa connexion avec le PC | **Câble** (le Wi-Fi ne peut pas marcher) |
-| Wi-Fi d'école, de résidence, d'hôtel, de café ou d'entreprise | **Câble** (ces réseaux isolent les appareils) |
-| Tu veux la latence la plus basse | **Câble** |
+| Cable: nothing opens on the phone | USB debugging is off, the cable is charge-only, or the *Allow USB debugging* prompt is waiting on the phone. Some brands (Samsung, Xiaomi…) need their USB driver. |
+| `localhost refused to connect` | The `lancer.bat` window isn't running, or the phone isn't linked by cable |
+| Wi-Fi: `ERR_ABORTED`, `ERR_TOO_MANY_RETRIES`, or the page loads forever | The devices aren't on the same Wi-Fi, the phone is the PC's hotspot, or the firewall blocks it. Use the cable, or open the port as admin: `New-NetFirewallRule -DisplayName "Manette Pixel" -Direction Inbound -Protocol TCP -LocalPort 8765 -Action Allow -Profile Private,Public` |
+| *Invalid link* | Scan the QR code again |
+| The game ignores the controller | Check that it shows up in `joy.cpl` (Win+R). Some games need the controller connected before they start. |
+| A gamepad test site sees nothing | Reload the page, click inside it, then press **A**. The Xbox button opens Game Bar instead. |
+| `Port 8765` in use | The server is already running: close the other window, or run `lancer.bat --port 8766` |
+| Any other setup error | Delete the `.venv` folder and run `lancer.bat` again |
 
----
-
-## Les commandes
-
-| Commande | Comment |
-|---|---|
-| Joysticks | Ils sont **flottants** : le centre se pose là où le pouce touche, dans la moitié du bas de l'écran pour le joystick droit. Si le pouce dépasse le bord, le centre le suit. |
-| L3 / R3 (clic du joystick) | **Double-tape puis maintiens** le joystick. Le pommeau devient vert, et tu peux continuer à diriger pendant ce temps (par exemple pour sprinter). |
-| Croix | Le pouce peut glisser d'une direction à l'autre, diagonales comprises, et déborder de la croix sans la lâcher. |
-| A B X Y | Le pouce glisse d'un bouton à l'autre. Un appui **entre** deux boutons voisins presse les deux (désactivable). |
-| LT LB / RB RT | Les gâchettes sont en haut. Glisser de l'une à l'autre fonctionne aussi. |
-| Pastille en bas | Elle affiche le n° de joueur et la latence. Un appui ouvre les **réglages** : taille, opacité, zone morte, course des joysticks, vibrations… |
-| Geste « retour » d'Android | Il met la partie en pause sans quitter la page. |
-
-Le bouton Xbox du milieu ouvre aussi la **Game Bar** de Windows, comme une vraie manette.
-
----
-
-## Dépannage
-
-**Ça ne marche pas ? Cherche ce que tu vois.**
-
-### En câble USB
-
-**La manette ne s'ouvre pas sur le téléphone, et le terminal n'affiche pas « Téléphone branché en USB »**
-- Le *Débogage USB* n'est pas activé (voir l'étape 3 de l'installation).
-- Le câble ne fait que charger : essaie un autre câble ou un autre port USB.
-- Déverrouille le téléphone et regarde si la question « Autoriser le débogage USB ? » attend.
-  Si tu as refusé : *Options pour les développeurs → Révoquer les autorisations de débogage
-  USB*, puis débranche et rebranche.
-- Sur certaines marques, comme Samsung ou Xiaomi, Windows a besoin du pilote USB du
-  fabricant : cherche « pilote USB *marque* ».
-
-**Le terminal dit « Téléphone branché en USB », mais rien ne s'ouvre**
-Ouvre toi-même **`http://localhost:8765`** dans Chrome sur le téléphone.
-
-**« localhost a refusé de se connecter » (`ERR_CONNECTION_REFUSED`)**
-Le téléphone ne passe pas par le câble. Soit le serveur n'est pas lancé (la fenêtre de
-`lancer.bat` doit rester ouverte), soit le téléphone n'est pas relié : voir le premier point.
-
-### En Wi-Fi
-
-**« Site inaccessible », `ERR_ABORTED`, `ERR_TOO_MANY_RETRIES` ou une page qui charge sans fin**
-1. Le téléphone et le PC sont-ils sur **le même** Wi-Fi ? Si le téléphone **partage sa
-   connexion** avec le PC, Android envoie le trafic de Chrome par la 4G, et la page n'arrive
-   jamais au PC. **Utilise le câble.**
-2. **Pare-feu** : si tu n'as pas coché les deux cases au premier lancement, ouvre un
-   PowerShell **en administrateur** (clic droit sur le menu Démarrer → *Terminal (admin)*),
-   puis lance :
-   ```
-   New-NetFirewallRule -DisplayName "Manette Pixel" -Direction Inbound -Protocol TCP -LocalPort 8765 -Action Allow -Profile Private,Public
-   ```
-3. Le terminal liste parfois d'autres adresses du PC : essaie-les.
-4. Wi-Fi public, d'école ou d'entreprise : ces réseaux bloquent les appareils entre eux,
-   quoi que tu fasses. **Utilise le câble.**
-
-**« Lien invalide »** : rescanne le QR code. `lancer.bat --nouveau-jeton` crée un nouveau
-code secret et invalide les anciens liens.
-
-### Côté PC et jeu
-
-**Le jeu ne réagit pas**
-- Win+R → **`joy.cpl`** → Entrée : « Controller (XBOX 360 For Windows) » doit apparaître.
-  *Propriétés* montre les boutons qui s'allument quand tu touches le téléphone.
-- Certains jeux ne voient une manette que si elle est branchée **avant** leur lancement :
-  connecte le téléphone, puis relance le jeu.
-
-**Un site de test de manette (comme gamepad-tester) affiche « aucune manette »**
-Les navigateurs ne montrent une manette qu'**après un appui**, et seulement à la page affichée
-au premier plan. Recharge la page (F5), clique dedans, puis appuie sur **A**. Le bouton Xbox
-ne compte pas, car il ouvre la Game Bar par-dessus.
-
-**Le terminal se ferme tout de suite ou affiche une erreur au lancement**
-- *« Impossible d'écouter sur le port 8765 »* : le serveur tourne déjà dans une autre fenêtre.
-  Ferme-la, ou lance `lancer.bat --port 8766`.
-- *« Impossible de joindre le pilote ViGEmBus »* : installe-le à la main depuis
-  [ViGEmBus releases](https://github.com/nefarius/ViGEmBus/releases), redémarre le PC, puis relance.
-- *« Python n'a pas pu être installé »* : installe **Python 3.12** depuis
-  [python.org](https://www.python.org/downloads/) en cochant **Add python.exe to PATH**.
-- Dans tous les autres cas : supprime le dossier **`.venv`** et relance `lancer.bat`.
-  L'installation se refait proprement.
-
----
-
-## Mettre à jour, désinstaller
-
-- **Mettre à jour** : retélécharge le ZIP et remplace les fichiers. Tu peux garder
-  `config.json` pour que tes liens Wi-Fi restent valides. `lancer.bat` réinstalle tout
-  seul ce qui a changé.
-- **Désinstaller** : supprime le dossier. Le pilote ViGEmBus se retire dans *Paramètres →
-  Applications* (« ViGEm Bus Driver »). Si DS4Windows ou un autre outil de manette s'en
-  sert, garde-le.
-
----
-
-## Ce qui le rend fiable
-
-- **État complet à chaque message**, jamais des « appui / relâche ». Un bouton ne peut pas
-  rester coincé, car le message suivant corrige tout.
-- **Chien de garde** : si le téléphone se tait plus d'une seconde (écran verrouillé, Wi-Fi
-  coupé), la manette revient au neutre. Le personnage ne court pas tout seul dans un mur.
-- **Reconnexion automatique**, sur la *même* manette virtuelle : le jeu ne voit pas de
-  débranchement.
-- Quand une fenêtre recouvre la manette (réglages, pause, téléphone tourné en portrait,
-  application en arrière-plan), tout est relâché.
-- Une manette dont le téléphone est parti depuis 2 minutes est débranchée de Windows : les
-  manettes fantômes ne s'accumulent pas.
-- Cliquer dans la fenêtre du serveur ne le fige pas (la sélection de la console Windows
-  classique est désactivée).
+## How it works
 
 ```
-Téléphone (Chrome) ──WebSocket, câble ou Wi-Fi──▶ serveur.py ──vgamepad──▶ ViGEmBus ──▶ le jeu
+Phone (Chrome) ──WebSocket, cable or Wi-Fi──▶ serveur.py ──vgamepad──▶ ViGEmBus ──▶ game
 ```
 
-## Options
+- Every message carries the **full state**, so a lost message can't leave a button stuck.
+- A **watchdog** resets the controller to neutral after one second of silence.
+- The phone **reconnects to the same virtual controller**, so the game never sees it unplugged.
+- Controllers left idle for 2 minutes are unplugged.
+- Over USB, `adb reverse` forwards the phone's `localhost:8765` to the PC. adb is downloaded
+  automatically.
 
-```
-lancer.bat --port 8766          change le port (8765 par défaut)
-lancer.bat --nouveau-jeton      invalide les liens et QR codes déjà donnés
-lancer.bat --sans-navigateur    n'ouvre pas la page QR sur le PC
-```
-
-## Fichiers
-
-- `lancer.bat` : installe ce qui manque (Python, dépendances), puis démarre le serveur.
-- `serveur.py` : le serveur web et la manette virtuelle. Il installe aussi le pilote
-  ViGEmBus et télécharge adb (outils officiels Google) au premier lancement.
-- `web/` : l'interface du téléphone (`index.html`, `style.css`, `app.js`), sans dépendance.
-- `config.json` : le code secret des liens Wi-Fi, créé au premier lancement.
+Options: `--port 8766`, `--nouveau-jeton` (invalidates old links and QR codes),
+`--sans-navigateur` (doesn't open the QR page on the PC).
