@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0c0e12">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Manette</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<main id="pad" aria-label="Manette">
+  <!-- Zones de capture des joysticks (invisibles, plus larges que le dessin) -->
+  <div class="zone" data-zone="L"></div>
+  <div class="zone" data-zone="R"></div>
+
+  <!-- Gâchettes et bumpers -->
+  <div class="btn pill" data-btn="LT" data-groupe="g" style="--x:var(--lt-x);--y:var(--haut)">LT</div>
+  <div class="btn pill" data-btn="LB" data-groupe="g" style="--x:var(--lb-x);--y:var(--haut)">LB</div>
+  <div class="btn pill" data-btn="RB" data-groupe="d" style="--x:var(--rb-x);--y:var(--haut)">RB</div>
+  <div class="btn pill" data-btn="RT" data-groupe="d" style="--x:var(--rt-x);--y:var(--haut)">RT</div>
+
+  <!-- Boutons du centre -->
+  <div class="btn rond petit" data-btn="BACK" data-hit="1.35" style="--x:calc(50% - var(--u) * 14);--y:var(--haut)" aria-label="Affichage">
+    <svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4"/></svg>
+  </div>
+  <div class="btn rond guide" data-btn="GUIDE" data-hit="1.25" style="--x:50%;--y:var(--haut)" aria-label="Guide">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg>
+  </div>
+  <div class="btn rond petit" data-btn="START" data-hit="1.35" style="--x:calc(50% + var(--u) * 14);--y:var(--haut)" aria-label="Menu">
+    <svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+  </div>
+
+  <!-- Joystick gauche -->
+  <div class="stick" data-stick="L" style="--x:var(--sl-x);--y:var(--sl-y)">
+    <div class="base"></div><div class="knob"><span>L3</span></div>
+  </div>
+
+  <!-- Croix directionnelle -->
+  <div class="dpad" data-dpad style="--x:var(--dp-x);--y:var(--bas)">
+    <div class="bras h" data-dir="DU"><svg viewBox="0 0 24 24"><path d="M7 14l5-5 5 5"/></svg></div>
+    <div class="bras g" data-dir="DL"><svg viewBox="0 0 24 24"><path d="M14 7l-5 5 5 5"/></svg></div>
+    <div class="coeur"></div>
+    <div class="bras d" data-dir="DR"><svg viewBox="0 0 24 24"><path d="M10 7l5 5-5 5"/></svg></div>
+    <div class="bras b" data-dir="DD"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg></div>
+  </div>
+
+  <!-- Boutons A B X Y -->
+  <div class="btn rond face y" data-btn="Y" data-groupe="f" data-hit="1.5" style="--x:var(--fc-x);--y:calc(var(--fc-y) - var(--fo))">Y</div>
+  <div class="btn rond face x" data-btn="X" data-groupe="f" data-hit="1.5" style="--x:calc(var(--fc-x) - var(--fo));--y:var(--fc-y)">X</div>
+  <div class="btn rond face b" data-btn="B" data-groupe="f" data-hit="1.5" style="--x:calc(var(--fc-x) + var(--fo));--y:var(--fc-y)">B</div>
+  <div class="btn rond face a" data-btn="A" data-groupe="f" data-hit="1.5" style="--x:var(--fc-x);--y:calc(var(--fc-y) + var(--fo))">A</div>
+
+  <!-- Joystick droit -->
+  <div class="stick" data-stick="R" style="--x:var(--sr-x);--y:var(--bas)">
+    <div class="base"></div><div class="knob"><span>R3</span></div>
+  </div>
+
+  <!-- État de la connexion + réglages -->
+  <button id="statut" class="statut" type="button" aria-label="Réglages">
+    <i class="point"></i><span id="statut-texte">Connexion…</span>
+    <svg class="engrenage" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</main>
+
+<!-- Écran d'accueil : le premier toucher donne le plein écran et le droit de vibrer -->
+<section id="accueil" class="voile">
+  <div class="carte">
+    <h1 id="accueil-titre">Manette prête</h1>
+    <p id="accueil-texte">Touche le bouton pour passer en plein écran et commencer.</p>
+    <button id="jouer" class="principal" type="button">Jouer</button>
+    <p class="astuce">Double-tape puis maintiens un joystick pour cliquer dessus (L3 / R3).</p>
+  </div>
+</section>
+
+<!-- Erreur bloquante (lien invalide, plus de place) -->
+<section id="erreur" class="voile" hidden>
+  <div class="carte">
+    <h1 id="erreur-titre">Problème</h1>
+    <p id="erreur-texte"></p>
+    <button id="reessayer" class="principal" type="button">Réessayer</button>
+  </div>
+</section>
+
+<!-- Réglages -->
+<section id="reglages" class="voile" hidden>
+  <div class="carte large">
+    <header>
+      <h1>Réglages</h1>
+      <button id="fermer-reglages" class="principal" type="button">Reprendre</button>
+    </header>
+    <div class="grille">
+      <label>Taille des commandes <output data-pour="taille"></output>
+        <input type="range" data-reglage="taille" min="0.8" max="1.3" step="0.05"></label>
+      <label>Opacité <output data-pour="opacite"></output>
+        <input type="range" data-reglage="opacite" min="0.3" max="1" step="0.05"></label>
+      <label>Zone morte des joysticks <output data-pour="zoneMorte"></output>
+        <input type="range" data-reglage="zoneMorte" min="0" max="0.3" step="0.01"></label>
+      <label>Course des joysticks <output data-pour="course"></output>
+        <input type="range" data-reglage="course" min="0.5" max="1.3" step="0.05"></label>
+      <label>Joysticks
+        <select data-reglage="flottants">
+          <option value="true">Flottants : centrés là où le pouce se pose</option>
+          <option value="false">Fixes : centrés sur le dessin</option>
+        </select></label>
+      <label>Vibration au toucher
+        <select data-reglage="haptique">
+          <option value="0">Aucune</option>
+          <option value="8">Légère</option>
+          <option value="18">Forte</option>
+        </select></label>
+      <label class="case"><input type="checkbox" data-reglage="vibrJeu"> Vibrations envoyées par le jeu</label>
+      <label class="case"><input type="checkbox" data-reglage="combos"> Appuyer entre deux boutons voisins presse les deux</label>
+      <label class="case"><input type="checkbox" data-reglage="latence"> Afficher la latence</label>
+    </div>
+    <footer>
+      <button id="defaut" type="button">Réglages par défaut</button>
+      <button id="plein-ecran" type="button">Plein écran</button>
+    </footer>
+  </div>
+</section>
+
+<!-- Téléphone tenu en portrait -->
+<section id="portrait" class="voile">
+  <div class="carte">
+    <svg class="tourner" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M3 10a9 9 0 0 1 4-6M21 14a9 9 0 0 1-4 6"/></svg>
+    <h1>Tourne le téléphone</h1>
+    <p>La manette s'utilise à l'horizontale.</p>
+  </div>
+</section>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
