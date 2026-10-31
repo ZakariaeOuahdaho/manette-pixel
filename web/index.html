@@ -145,10 +145,25 @@
 
 <!-- Mode édition : chaque bouton se déplace au doigt, puis s'enregistre comme preset -->
 <section id="edition" hidden>
-  <p id="poignee">✥ Glisse les boutons, et ce cadre, où tu veux</p>
-  <input id="nom-preset" type="text" maxlength="24" placeholder="Nom du preset" autocomplete="off">
-  <button id="enregistrer-preset" class="principal" type="button">Enregistrer</button>
-  <button id="annuler-edition" type="button" aria-label="Annuler">✕</button>
+  <div data-vue="disposition">
+    <p class="poignee">✥ Glisse les boutons et ce cadre</p>
+    <button id="ajouter-combo" type="button">＋ Combo</button>
+    <input id="nom-preset" type="text" maxlength="24" placeholder="Nom du preset" autocomplete="off">
+    <button id="enregistrer-preset" class="principal" type="button">Enregistrer</button>
+    <button id="annuler-edition" type="button" aria-label="Annuler">✕</button>
+  </div>
+  <!-- Enregistrement d'un combo : on le joue sur la manette, puis Terminer -->
+  <div data-vue="combo" hidden>
+    <p class="poignee"><i class="rec"></i> Joue ton combo, puis Terminer</p>
+    <input id="nom-combo" type="text" maxlength="8" placeholder="Nom" autocomplete="off">
+    <select id="vitesse-combo" aria-label="Vitesse du combo">
+      <option value="1">×1</option>
+      <option value="1.5">×1,5</option>
+      <option value="2">×2</option>
+    </select>
+    <button id="terminer-combo" class="principal" type="button">Terminer</button>
+    <button id="annuler-combo" type="button" aria-label="Annuler le combo">✕</button>
+  </div>
 </section>
 
 <!-- Téléphone tenu en portrait -->

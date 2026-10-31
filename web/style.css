@@ -300,10 +300,6 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   bottom: max(8px, env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 5;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
   width: min(280px, 60vw);
   padding: 6px 8px 8px;
   border-radius: 14px;
@@ -311,8 +307,12 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   background: #161920;
   touch-action: auto;
 }
-#edition p { width: 100%; margin: 0; padding: 2px 0; text-align: center; font-size: 12px; color: #a6abb3; cursor: grab; touch-action: none; }
-#edition input {
+#edition [data-vue] { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+#edition p { flex: 1 1 140px; margin: 0; padding: 2px 0; font-size: 12px; color: #a6abb3; cursor: grab; touch-action: none; }
+#edition [data-vue="combo"] p { flex-basis: 100%; color: #e8eaed; }
+#edition .rec { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ff6259; animation: clignote 1s infinite; }
+@keyframes clignote { 50% { opacity: .25; } }
+#edition input, #edition select {
   flex: 1 1 60px;
   min-width: 0;
   min-height: 36px;
@@ -323,6 +323,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   color: #e8eaed;
   font: inherit;
 }
+#edition select { flex: 0 0 auto; padding: 0 6px; }
 #edition button { min-height: 36px; min-width: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .06); font-weight: 600; }
 #edition button.principal { border: none; background: #74d65a; color: #0c0e12; }
 
@@ -330,3 +331,33 @@ body.edition :is([data-btn], [data-stick], [data-dpad]) { outline: 2px dashed rg
 body.edition .deplace { outline-style: solid; z-index: 4; }
 body.edition .zone { pointer-events: none; }
 body.edition #statut { visibility: hidden; }
+/* Pendant l'enregistrement d'un combo, la manette se joue normalement. */
+body.edition.enregistrement :is([data-btn], [data-stick], [data-dpad]) { outline: none; }
+body.edition.enregistrement .zone { pointer-events: auto; }
+
+/* Boutons de combo */
+.combo {
+  --w: calc(var(--u) * 13);
+  --h: calc(var(--u) * 13);
+  font-size: calc(var(--u) * 3);
+  line-height: 1.1;
+  text-align: center;
+  overflow-wrap: anywhere;
+  color: #c9a7ff;
+  border-color: rgba(201, 167, 255, .6);
+}
+.combo.on { background: #c9a7ff; color: #0c0e12; }
+.combo .retirer { display: none; }
+body.edition:not(.enregistrement) .combo .retirer {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ff6259;
+  color: #0c0e12;
+  font-size: 13px;
+}

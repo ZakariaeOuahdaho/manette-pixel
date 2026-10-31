@@ -149,7 +149,10 @@ const sticks = { L: { contact: null, finTape: 0 }, R: { contact: null, finTape: 
 function evaluerBouton(c) {
   const ids = boutonsSous(c.x, c.y);
   if (ids) {
-    for (const id of ids) c.vus.add(id);
+    for (const id of ids) {
+      c.vus.add(id);
+      if (id.startsWith('C:') && !c.ids.includes(id)) lancerCombo(id);  // le doigt arrive sur le combo
+    }
     c.ids = ids;
     c.dpad = 0;
     c.surDpad = false;
@@ -229,7 +232,7 @@ function oublier(id) {
 }
 
 pad.addEventListener('pointerdown', (e) => {
-  if (edition) { debutGlisse(e); return; }
+  if (edition && !edition.enregistrement) { debutGlisse(e); return; }
   if (!actif || e.target.closest('#statut')) return;
   e.preventDefault();
   // Premier doigt posé : tout contact encore connu est un fantôme (relâcher jamais reçu).
@@ -255,7 +258,7 @@ pad.addEventListener('pointerdown', (e) => {
 }, { passive: false });
 
 pad.addEventListener('pointermove', (e) => {
-  if (edition) { suiteGlisse(e); return; }
+  if (edition && !edition.enregistrement) { suiteGlisse(e); return; }
   const c = contacts.get(e.pointerId);
   if (!c || (e.pointerType === 'mouse' && e.buttons === 0)) return;  // simple survol
   c.x = e.clientX;
@@ -287,8 +290,54 @@ function verrouiller(c) {
   return false;
 }
 
+// ---------- Combos : un bouton rejoue un enchaînement enregistré (boutons, gâchettes, croix,
+// modificateurs armés ; pas les joysticks), au rythme enregistré et à la vitesse choisie. ----------
+
+const APPUI_MIN_MS = 34;  // environ 2 images à 60 i/s : en dessous, un jeu peut rater l'appui
+const lectures = new Map();  // « C:id » -> { debut, pas aux temps de lecture, minuteries }
+
+function lancerCombo(id) {
+  if (edition || lectures.has(id)) return;
+  const combo = (presetActuel().combos || []).find((k) => `C:${k.id}` === id);
+  if (!combo) return;
+  const pas = [];
+  let precedent = -Infinity;
+  for (const p of combo.pas) {
+    const t = Math.max(p.t / combo.vitesse, precedent + APPUI_MIN_MS);
+    pas.push({ ...p, t });
+    precedent = t;
+  }
+  const lecture = { debut: performance.now(), pas, minuteries: [] };
+  for (const p of pas) lecture.minuteries.push(setTimeout(() => maj(true), p.t + 1));
+  lecture.minuteries.push(setTimeout(() => { lectures.delete(id); maj(true); }, precedent + 2));
+  lectures.set(id, lecture);
+}
+
+function arreterCombos() {
+  for (const l of lectures.values()) l.minuteries.forEach(clearTimeout);
+  lectures.clear();
+}
+
+// État que les combos en cours ajoutent à celui des doigts.
+function etatCombos() {
+  const somme = { b: 0, lt: 0, rt: 0 };
+  const maintenant = performance.now();
+  for (const l of lectures.values()) {
+    let courant = null;
+    for (const p of l.pas) {
+      if (p.t <= maintenant - l.debut) courant = p; else break;
+    }
+    if (courant) {
+      somme.b |= courant.b;
+      somme.lt = Math.max(somme.lt, courant.lt);
+      somme.rt = Math.max(somme.rt, courant.rt);
+    }
+  }
+  return somme;
+}
+
 function relacherContact(e) {
-  if (edition) { finGlisse(e); return; }
+  if (edition && !edition.enregistrement) { finGlisse(e); return; }
   const c = contacts.get(e.pointerId);
   if (!c) return;
   const change = c.type === 'bouton' && combat() && verrouiller(c);
@@ -301,6 +350,7 @@ pad.addEventListener('pointercancel', relacherContact);
 function relacherTout() {
   contacts.clear();
   armes.clear();
+  arreterCombos();
   for (const s of Object.values(sticks)) { s.contact = null; s.finTape = 0; }
   maj();
 }
@@ -328,13 +378,17 @@ function calculer() {
         if (id === 'LT') lt = 255;
         else if (id === 'RT') rt = 255;
         else if (id === 'LTRT') { lt = 255; rt = 255; }
-        else boutons |= BITS[id];
+        else if (!id.startsWith('C:')) boutons |= BITS[id];  // un combo agit par etatCombos()
       }
     }
   }
   for (const id of armes) {
     if (id === 'LT') lt = 255; else boutons |= BITS[id];
   }
+  const k = etatCombos();
+  boutons |= k.b;
+  lt = Math.max(lt, k.lt);
+  rt = Math.max(rt, k.rt);
   // À l'écran Y descend ; pour XInput, Y positif = haut.
   return { boutons, lt, rt, lx: axe(v.L[0]), ly: axe(-v.L[1]), rx: axe(v.R[0]), ry: axe(-v.R[1]) };
 }
@@ -343,6 +397,7 @@ function maj(redessiner = false) {
   const nouveau = calculer();
   const appui = (nouveau.boutons & ~etat.boutons) || (nouveau.lt && !etat.lt) || (nouveau.rt && !etat.rt);
   if (redessiner || nouveau.boutons !== etat.boutons || nouveau.lt !== etat.lt || nouveau.rt !== etat.rt) dessinerBoutons(nouveau);
+  if (edition && edition.enregistrement) noterCombo(nouveau);
   etat = nouveau;
   if (appui) vibrerToucher();
   planifierSticks();
@@ -355,7 +410,8 @@ function dessinerBoutons(e) {
   if (!geo) return;
   for (const b of geo.boutons) {
     const on = b.id === 'LT' ? e.lt > 0 : b.id === 'RT' ? e.rt > 0
-      : b.id === 'LTRT' ? e.lt > 0 && e.rt > 0 : (e.boutons & BITS[b.id]) !== 0;
+      : b.id === 'LTRT' ? e.lt > 0 && e.rt > 0
+        : b.id.startsWith('C:') ? lectures.has(b.id) : (e.boutons & BITS[b.id]) !== 0;
     b.el.classList.toggle('on', on);
     b.el.classList.toggle('arme', armes.has(b.id));
   }
@@ -404,6 +460,7 @@ const vue = new DataView(tampon);
 
 function envoyer(force) {
   if (!ws || !pret || ws.readyState !== WebSocket.OPEN) return;
+  if (edition) return;  // enregistrer un combo ne doit pas faire bouger le personnage en jeu
   const e = etat;
   const cle = `${e.boutons},${e.lt},${e.rt},${e.lx},${e.ly},${e.rx},${e.ry}`;
   if (!force && cle === dernierEnvoye) return;
@@ -594,7 +651,8 @@ function arreterVibration() {
 let actif = false;
 
 function recalculerActif() {
-  const ok = $('#accueil').hidden && $('#reglages').hidden && $('#erreur').hidden && !edition
+  const ok = $('#accueil').hidden && $('#reglages').hidden && $('#erreur').hidden
+    && (!edition || edition.enregistrement)
     && !portrait.matches && document.visibilityState === 'visible';
   if (ok === actif) return;
   if (ok) {
@@ -724,10 +782,30 @@ for (const el of DEPLACABLES) {
   el.dataset.y0 = el.style.getPropertyValue('--y');
 }
 
+// Un bouton de combo, avec sa croix de suppression (visible seulement en mode édition).
+function creerBoutonCombo(combo, pos) {
+  const el = document.createElement('div');
+  el.className = 'btn rond combo';
+  el.dataset.btn = `C:${combo.id}`;
+  el.dataset.hit = '1.3';
+  el.style.setProperty('--x', `${pos.x * 100}%`);
+  el.style.setProperty('--y', `${pos.y * 100}%`);
+  const nom = document.createElement('span');
+  nom.textContent = combo.nom;
+  const retirer = document.createElement('span');
+  retirer.className = 'retirer';
+  retirer.textContent = '✕';
+  el.append(nom, retirer);
+  pad.append(el);
+}
+
 function appliquerPreset() {
   const p = presetActuel();
   cfg.preset = p.id;  // un preset supprimé retombe sur Normal
   document.body.dataset.base = p.base;
+  arreterCombos();
+  for (const el of pad.querySelectorAll('.combo')) el.remove();
+  for (const k of p.combos || []) creerBoutonCombo(k, (p.positions && p.positions[`C:${k.id}`]) || { x: 0.5, y: 0.5 });
   for (const el of DEPLACABLES) {
     const pos = p.positions && p.positions[cleDe(el)];
     el.style.setProperty('--x', pos ? `${pos.x * 100}%` : el.dataset.x0);
@@ -771,7 +849,9 @@ function enregistrerPersos() {
 
 // ---------- Mode édition : on touche un bouton et on le fait glisser où on veut ----------
 
-let edition = null;  // { perso: preset personnel modifié ou null, retour: preset si on annule, glisse }
+// { perso: preset personnel modifié ou null, retour: preset si on annule, combos: copie de travail,
+//   enregistrement: combo en cours d'enregistrement ou null, glisse: déplacement en cours }
+let edition = null;
 
 // nouveau : créer un preset à partir de la base donnée, au lieu de retoucher le preset actuel.
 function ouvrirEdition(nouveau) {
@@ -780,8 +860,12 @@ function ouvrirEdition(nouveau) {
   if (nouveau) cfg.preset = nouveau;
   appliquerPreset();
   const p = presetActuel();
-  edition = { perso: !nouveau && persos.includes(p) ? p : null, retour, glisse: null };
+  edition = {
+    perso: !nouveau && persos.includes(p) ? p : null, retour,
+    combos: (p.combos || []).map((k) => ({ ...k })), enregistrement: null, glisse: null,
+  };
   $('#nom-preset').value = edition.perso ? edition.perso.nom : '';
+  montrerVue('disposition');
   for (const prop of ['left', 'top', 'bottom', 'transform']) $('#edition').style[prop] = '';  // cadre à sa place
   $('#reglages').hidden = true;
   $('#edition').hidden = false;
@@ -794,16 +878,17 @@ function fermerEdition(enregistrer) {
   if (enregistrer) {
     const r = pad.getBoundingClientRect();
     const positions = {};
-    for (const el of DEPLACABLES) {
+    for (const el of pad.querySelectorAll('[data-btn], [data-stick], [data-dpad]')) {
       if (!el.getClientRects().length) continue;  // LT+RT, masqué hors UFC
       const c = centre(el);
       positions[cleDe(el)] = { x: +((c.cx - r.left) / r.width).toFixed(4), y: +((c.cy - r.top) / r.height).toFixed(4) };
     }
     const nom = $('#nom-preset').value.trim() || `Mon preset ${persos.length + 1}`;
+    const combos = edition.combos;
     if (edition.perso) {
-      Object.assign(edition.perso, { nom, positions });
+      Object.assign(edition.perso, { nom, positions, combos });
     } else {
-      const p = { id: `perso-${Date.now()}`, nom, base: presetActuel().base, positions };
+      const p = { id: `perso-${Date.now()}`, nom, base: presetActuel().base, positions, combos };
       persos.push(p);
       cfg.preset = p.id;
     }
@@ -818,7 +903,56 @@ function fermerEdition(enregistrer) {
   recalculerActif();
 }
 
+function montrerVue(nom) {
+  for (const v of document.querySelectorAll('#edition [data-vue]')) v.hidden = v.dataset.vue !== nom;
+  document.body.classList.toggle('enregistrement', nom === 'combo');
+}
+
+// Enregistrer un combo : la manette redevient jouable (sans rien envoyer au PC) et chaque
+// changement d'état est noté avec son heure, à partir du premier appui.
+function commencerCombo() {
+  edition.enregistrement = { pas: [], t0: 0 };
+  $('#nom-combo').value = '';
+  montrerVue('combo');
+  recalculerActif();
+}
+
+function noterCombo(e) {
+  const r = edition.enregistrement;
+  const dernier = r.pas[r.pas.length - 1];
+  const neutre = !e.boutons && !e.lt && !e.rt;
+  if (dernier ? dernier.b === e.boutons && dernier.lt === e.lt && dernier.rt === e.rt : neutre) return;
+  if (!r.pas.length) r.t0 = performance.now();
+  r.pas.push({ t: Math.round(performance.now() - r.t0), b: e.boutons, lt: e.lt, rt: e.rt });
+}
+
+function finirCombo(garder) {
+  const r = edition.enregistrement;
+  edition.enregistrement = null;
+  relacherTout();
+  montrerVue('disposition');
+  recalculerActif();
+  if (!garder || !r.pas.length) return;
+  const dernier = r.pas[r.pas.length - 1];
+  if (dernier.b || dernier.lt || dernier.rt) r.pas.push({ t: dernier.t + 60, b: 0, lt: 0, rt: 0 });
+  const combo = {
+    id: Date.now().toString(36),
+    nom: $('#nom-combo').value.trim() || `C${edition.combos.length + 1}`,
+    vitesse: parseFloat($('#vitesse-combo').value) || 1,
+    pas: r.pas,
+  };
+  edition.combos.push(combo);
+  creerBoutonCombo(combo, { x: 0.5, y: 0.5 });  // au milieu : à glisser où on veut
+}
+
 function debutGlisse(e) {
+  const croix = e.target.closest('.retirer');
+  if (croix) {
+    const el = croix.parentElement;
+    edition.combos = edition.combos.filter((k) => `C:${k.id}` !== el.dataset.btn);
+    el.remove();
+    return;
+  }
   const el = e.target.closest('[data-btn], [data-stick], [data-dpad]');
   if (!el || edition.glisse) return;
   e.preventDefault();
@@ -846,7 +980,7 @@ function finGlisse(e) {
 }
 
 // Le cadre d'édition se déplace par sa ligne du haut, pour dégager un bouton qu'il couvre.
-$('#poignee').addEventListener('pointerdown', (e) => {
+for (const p of document.querySelectorAll('#edition .poignee')) p.addEventListener('pointerdown', (e) => {
   const poignee = e.currentTarget;
   const cadre = $('#edition');
   const r = cadre.getBoundingClientRect();
@@ -868,6 +1002,9 @@ $('#poignee').addEventListener('pointerdown', (e) => {
   poignee.addEventListener('pointercancel', fin);
 });
 
+$('#ajouter-combo').addEventListener('click', commencerCombo);
+$('#terminer-combo').addEventListener('click', () => finirCombo(true));
+$('#annuler-combo').addEventListener('click', () => finirCombo(false));
 $('#modifier-preset').addEventListener('click', () => ouvrirEdition(null));
 $('#enregistrer-preset').addEventListener('click', () => fermerEdition(true));
 $('#annuler-edition').addEventListener('click', () => fermerEdition(false));
