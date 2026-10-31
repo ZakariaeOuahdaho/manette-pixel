@@ -136,7 +136,7 @@ qui le relie au PC.
 | A B X Y | Le pouce glisse d'un bouton à l'autre. Un appui **entre** deux boutons voisins presse les deux (désactivable). |
 | LT LB / RB RT | Les gâchettes sont en haut. Glisser de l'une à l'autre fonctionne aussi. |
 | Pastille en bas | Elle affiche le n° de joueur et la latence. Un appui ouvre les **réglages** : taille, opacité, zone morte, course des joysticks, vibrations… |
-| Boutons affichés | Dans les réglages, choisis **Xbox** (A B X Y, LB LT) ou **PlayStation** (✕ ○ □ △, L1 L2), aux mêmes places. Seuls les noms à l'écran changent : le jeu voit toujours une manette Xbox. |
+| Boutons affichés | Dans les réglages, choisis **Xbox** (A B X Y, LB LT) ou **PlayStation** (✕ ○ □ △, L1 L2, croix en haut à gauche et les deux joysticks en bas). Le jeu voit toujours une manette Xbox. |
 | Geste « retour » d'Android | Il met la partie en pause sans quitter la page. |
 
 Le bouton Xbox du milieu ouvre aussi la **Game Bar** de Windows, comme une vraie manette.

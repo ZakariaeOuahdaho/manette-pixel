@@ -37,6 +37,7 @@ html, body {
   --sl-x: calc(var(--gl) + var(--u) * 22);
   --sl-y: 46%;
   --dp-x: calc(var(--gl) + var(--u) * 52);
+  --dp-y: var(--bas);
   --fc-x: calc(100% - var(--gr) - var(--u) * 22);
   --fc-y: 46%;
   --fo: calc(var(--u) * 13);
@@ -45,6 +46,14 @@ html, body {
   position: fixed;
   inset: 0;
   height: 100dvh;
+}
+
+/* Disposition PlayStation : croix en haut à gauche, joystick gauche en bas, symétrique du droit. */
+body.ps #pad {
+  --sl-x: calc(var(--gl) + var(--u) * 52);
+  --sl-y: var(--bas);
+  --dp-x: calc(var(--gl) + var(--u) * 22);
+  --dp-y: 46%;
 }
 
 /* Élément centré sur (--x, --y) : les marges négatives laissent transform libre pour l'animation. */
@@ -62,6 +71,7 @@ html, body {
 .zone { position: absolute; }
 .zone[data-zone="L"] { left: 0; top: calc(var(--u) * 16); bottom: 0; width: calc(var(--gl) + var(--u) * 46); }
 .zone[data-zone="R"] { right: 0; bottom: 0; height: calc(var(--u) * 46); width: calc(var(--gr) + var(--u) * 78); }
+body.ps .zone[data-zone="L"] { top: auto; height: calc(var(--u) * 46); width: calc(var(--gl) + var(--u) * 78); }
 
 /* ---------- Boutons ---------- */
 
