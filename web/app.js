@@ -695,8 +695,8 @@ const FORMATS = {
 // de chaque élément, en fraction de l'écran pour s'adapter à un autre téléphone. ----------
 
 const PRESETS_FIXES = [
-  { id: 'normal', nom: 'Normal', base: 'normal' },
-  { id: 'ufc', nom: 'UFC 4 (combat)', base: 'ufc' },
+  { id: 'normal', nom: 'Normal', base: 'normal', depuis: 'de Normal' },
+  { id: 'ufc', nom: 'UFC 4 (combat)', base: 'ufc', depuis: 'd\'UFC 4' },
 ];
 const AIDES_PRESET = {
   normal: 'Disposition d\'une manette classique : gâchettes en haut.',
@@ -743,12 +743,25 @@ function appliquerPreset() {
   }
   if (!combat()) armes.clear();
   $('#aide-preset').textContent = AIDES_PRESET[p.id]
-    || `Ton preset, parti de « ${PRESETS_FIXES.find((f) => f.id === p.base).nom} ».`;
-  $('#supprimer-preset').hidden = !persos.includes(p);
+    || `Ton preset, créé à partir ${PRESETS_FIXES.find((f) => f.id === p.base).depuis}.`;
+  const perso = persos.includes(p);
+  $('#supprimer-preset').hidden = !perso;
+  // Un preset fourni ne se modifie pas : le personnaliser en crée une copie.
+  $('#modifier-preset').textContent = perso ? 'Personnaliser' : 'Personnaliser (crée une copie)';
 }
 
 function remplirPresets() {
-  $('#choix-preset').replaceChildren(...[...PRESETS_FIXES, ...persos].map((p) => new Option(p.nom, p.id)));
+  const groupe = (titre, options) => {
+    const g = document.createElement('optgroup');
+    g.label = titre;
+    g.append(...options);
+    return g;
+  };
+  $('#choix-preset').replaceChildren(
+    groupe('Presets', [...PRESETS_FIXES, ...persos].map((p) => new Option(p.nom, p.id))),
+    // Choisir une de ces lignes ouvre le mode édition sur un nouveau preset.
+    groupe('Créer', PRESETS_FIXES.map((p) => new Option(`＋ Nouveau preset, à partir ${p.depuis}`, `nouveau:${p.id}`))),
+  );
 }
 
 function enregistrerPersos() {
@@ -758,11 +771,16 @@ function enregistrerPersos() {
 
 // ---------- Mode édition : on touche un bouton et on le fait glisser où on veut ----------
 
-let edition = null;  // { perso: preset personnel modifié ou null, glisse: déplacement en cours }
+let edition = null;  // { perso: preset personnel modifié ou null, retour: preset si on annule, glisse }
 
-function ouvrirEdition() {
+// nouveau : créer un preset à partir de la base donnée, au lieu de retoucher le preset actuel.
+function ouvrirEdition(nouveau) {
+  if (edition) return;
+  const retour = cfg.preset;
+  if (nouveau) cfg.preset = nouveau;
+  appliquerPreset();
   const p = presetActuel();
-  edition = { perso: persos.includes(p) ? p : null, glisse: null };
+  edition = { perso: !nouveau && persos.includes(p) ? p : null, retour, glisse: null };
   $('#nom-preset').value = edition.perso ? edition.perso.nom : '';
   for (const prop of ['left', 'top', 'bottom', 'transform']) $('#edition').style[prop] = '';  // cadre à sa place
   $('#reglages').hidden = true;
@@ -790,6 +808,8 @@ function fermerEdition(enregistrer) {
       cfg.preset = p.id;
     }
     enregistrerPersos();
+  } else {
+    cfg.preset = edition.retour;
   }
   edition = null;
   document.body.classList.remove('edition');
@@ -848,7 +868,7 @@ $('#poignee').addEventListener('pointerdown', (e) => {
   poignee.addEventListener('pointercancel', fin);
 });
 
-$('#modifier-preset').addEventListener('click', ouvrirEdition);
+$('#modifier-preset').addEventListener('click', () => ouvrirEdition(null));
 $('#enregistrer-preset').addEventListener('click', () => fermerEdition(true));
 $('#annuler-edition').addEventListener('click', () => fermerEdition(false));
 $('#supprimer-preset').addEventListener('click', () => {
@@ -885,6 +905,10 @@ function remplirReglages() {
 function surReglage(e) {
   const el = e.target;
   const cle = el.dataset.reglage;
+  if (cle === 'preset' && el.value.startsWith('nouveau:')) {
+    ouvrirEdition(el.value.slice('nouveau:'.length));
+    return;
+  }
   if (el.type === 'checkbox') cfg[cle] = el.checked;
   else if (typeof DEFAUTS[cle] === 'boolean') cfg[cle] = el.value === 'true';
   else if (typeof DEFAUTS[cle] === 'string') cfg[cle] = el.value;
