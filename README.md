@@ -68,6 +68,9 @@ Wi-Fi: these networks block devices from reaching each other.
 | D-pad, A B X Y | Slide your thumb between buttons. Pressing between two face buttons presses both. |
 | Status pill | Shows the player number and latency. Tap it for settings: size, opacity, dead zone, rumble… |
 | Button labels | In settings, choose **Xbox** (A B X Y, LB LT) or **PlayStation** (✕ ○ □ △, L1 L2, D-pad top left and both sticks at the bottom). Games still see an Xbox controller. |
+| Triggers | **Near the thumbs** (default): in an arc beside the sticks, so the thumb pivots instead of stretching. **Top**: like a real controller, for holding the phone with your index fingers on the top edge. **Combat**: see below. |
+
+**Combat mode** (UFC 4 and other fighting games). In UFC 4 almost every move is a held modifier plus a strike: LB + X is a hook, LT + X a takedown, RB + X a clinch. One thumb can't hold RB and press X at once, so in this mode a **tap on LB, RB or LT arms it** (it lights up green) for the next strike: tap LB, then X, and the game gets LB + X. A second tap disarms; holding still works normally. An extra **LT+RT** button gives the low block and leg catch with one thumb.
 | Android back gesture | Pauses the game; it doesn't leave the page |
 
 ## Troubleshooting

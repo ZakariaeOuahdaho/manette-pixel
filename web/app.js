@@ -9,7 +9,7 @@ const BITS = {
 
 const DEFAUTS = {
   taille: 1, opacite: 0.9, zoneMorte: 0.08, course: 1, flottants: true,
-  haptique: 8, vibrJeu: true, combos: true, latence: true, disposition: 'xbox',
+  haptique: 8, vibrJeu: true, combos: true, latence: true, disposition: 'xbox', gachettes: 'pouces',
 };
 
 const DOUBLE_TAP_MS = 300;      // délai max entre deux tapes pour L3 / R3
@@ -74,9 +74,11 @@ function mesurer() {
   }
   const zones = {};
   for (const el of pad.querySelectorAll('[data-zone]')) zones[el.dataset.zone] = el.getBoundingClientRect();
+  // Un bouton masqué (LT+RT hors mode combat) n'a pas de taille : il ne doit pas capter de toucher.
+  const visibles = Array.from(pad.querySelectorAll('[data-btn]')).filter((el) => el.getClientRects().length);
   geo = {
     u: d.dx / 15,  // la croix fait 30 unités de large
-    boutons: Array.from(pad.querySelectorAll('[data-btn]'), (el) => ({
+    boutons: visibles.map((el) => ({
       el,
       id: el.dataset.btn,
       groupe: el.dataset.groupe || el.dataset.btn,
@@ -147,6 +149,7 @@ const sticks = { L: { contact: null, finTape: 0 }, R: { contact: null, finTape: 
 function evaluerBouton(c) {
   const ids = boutonsSous(c.x, c.y);
   if (ids) {
+    for (const id of ids) c.vus.add(id);
     c.ids = ids;
     c.dpad = 0;
     c.surDpad = false;
@@ -243,7 +246,7 @@ pad.addEventListener('pointerdown', (e) => {
     }
   }
   if (!c) {
-    c = { id: e.pointerId, type: 'bouton', x, y, ids: [], dpad: 0, surDpad: false };
+    c = { id: e.pointerId, type: 'bouton', x, y, ids: [], dpad: 0, surDpad: false, vus: new Set(), t0: performance.now() };
     evaluerBouton(c);
   }
   contacts.set(e.pointerId, c);
@@ -259,16 +262,42 @@ pad.addEventListener('pointermove', (e) => {
   maj();
 });
 
+// ---------- Mode combat : dans UFC 4, presque tout est « modificateur tenu + coup ».
+// Un seul pouce ne peut pas tenir RB et appuyer sur X : une tape sur un modificateur
+// l'arme, et il reste appuyé jusqu'à ce que le coup suivant soit relâché. ----------
+
+const MODIFICATEURS = ['LB', 'RB', 'LT'];
+const FRAPPES = ['A', 'B', 'X', 'Y'];
+const armes = new Set();
+
+// Renvoie vrai si les modificateurs armés ont changé.
+function verrouiller(c) {
+  if ([...c.vus].some((id) => FRAPPES.includes(id))) {
+    const avant = armes.size;
+    armes.clear();  // le coup est parti avec ses modificateurs
+    return avant > 0;
+  }
+  const [seul] = c.vus;
+  if (c.vus.size === 1 && MODIFICATEURS.includes(seul) && performance.now() - c.t0 < TAPE_MAX_MS) {
+    if (armes.has(seul)) armes.delete(seul); else armes.add(seul);  // une 2e tape désarme
+    return true;
+  }
+  return false;
+}
+
 function relacherContact(e) {
-  if (!contacts.has(e.pointerId)) return;
+  const c = contacts.get(e.pointerId);
+  if (!c) return;
+  const change = c.type === 'bouton' && cfg.gachettes === 'combat' && verrouiller(c);
   oublier(e.pointerId);
-  maj();
+  maj(change);  // armer LB ne change pas l'état envoyé (il était déjà appuyé) : redessiner quand même
 }
 pad.addEventListener('pointerup', relacherContact);
 pad.addEventListener('pointercancel', relacherContact);
 
 function relacherTout() {
   contacts.clear();
+  armes.clear();
   for (const s of Object.values(sticks)) { s.contact = null; s.finTape = 0; }
   maj();
 }
@@ -295,18 +324,22 @@ function calculer() {
       for (const id of c.ids) {
         if (id === 'LT') lt = 255;
         else if (id === 'RT') rt = 255;
+        else if (id === 'LTRT') { lt = 255; rt = 255; }
         else boutons |= BITS[id];
       }
     }
+  }
+  for (const id of armes) {
+    if (id === 'LT') lt = 255; else boutons |= BITS[id];
   }
   // À l'écran Y descend ; pour XInput, Y positif = haut.
   return { boutons, lt, rt, lx: axe(v.L[0]), ly: axe(-v.L[1]), rx: axe(v.R[0]), ry: axe(-v.R[1]) };
 }
 
-function maj() {
+function maj(redessiner = false) {
   const nouveau = calculer();
   const appui = (nouveau.boutons & ~etat.boutons) || (nouveau.lt && !etat.lt) || (nouveau.rt && !etat.rt);
-  if (nouveau.boutons !== etat.boutons || nouveau.lt !== etat.lt || nouveau.rt !== etat.rt) dessinerBoutons(nouveau);
+  if (redessiner || nouveau.boutons !== etat.boutons || nouveau.lt !== etat.lt || nouveau.rt !== etat.rt) dessinerBoutons(nouveau);
   etat = nouveau;
   if (appui) vibrerToucher();
   planifierSticks();
@@ -318,8 +351,10 @@ function maj() {
 function dessinerBoutons(e) {
   if (!geo) return;
   for (const b of geo.boutons) {
-    const on = b.id === 'LT' ? e.lt > 0 : b.id === 'RT' ? e.rt > 0 : (e.boutons & BITS[b.id]) !== 0;
+    const on = b.id === 'LT' ? e.lt > 0 : b.id === 'RT' ? e.rt > 0
+      : b.id === 'LTRT' ? e.lt > 0 && e.rt > 0 : (e.boutons & BITS[b.id]) !== 0;
     b.el.classList.toggle('on', on);
+    b.el.classList.toggle('arme', armes.has(b.id));
   }
   for (const el of geo.bras) el.classList.toggle('on', (e.boutons & BITS[el.dataset.dir]) !== 0);
 }
@@ -657,6 +692,8 @@ function appliquerReglages() {
   pad.style.setProperty('--opacite', cfg.opacite);
   pad.classList.toggle('flottants', cfg.flottants);
   document.body.classList.toggle('ps', cfg.disposition === 'playstation');
+  document.body.dataset.gachettes = cfg.gachettes;
+  if (cfg.gachettes !== 'combat') armes.clear();
   for (const o of document.querySelectorAll('output[data-pour]')) {
     o.textContent = FORMATS[o.dataset.pour](cfg[o.dataset.pour]);
   }

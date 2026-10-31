@@ -33,6 +33,11 @@ html, body {
   --lb-x: calc(var(--gl) + var(--u) * 34);
   --rt-x: calc(100% - var(--gr) - var(--u) * 11);
   --rb-x: calc(100% - var(--gr) - var(--u) * 34);
+  --lt-y: var(--haut);
+  --lb-y: var(--haut);
+  --rb-y: var(--haut);
+  --rt-y: var(--haut);
+  --ltrt-x: calc(100% - var(--gr) - var(--u) * 82);
 
   --sl-x: calc(var(--gl) + var(--u) * 22);
   --sl-y: 46%;
@@ -47,6 +52,28 @@ html, body {
   inset: 0;
   height: 100dvh;
 }
+
+/* Gâchettes près des pouces (et en mode combat) : en arc sur le bord intérieur, là où le
+   pouce arrive en pivotant depuis le bas de l'écran, au lieu de s'étirer vers les coins. */
+body:is([data-gachettes="pouces"], [data-gachettes="combat"]) #pad {
+  --lb-x: calc(var(--gl) + var(--u) * 50);
+  --lb-y: 28%;
+  --lt-x: calc(var(--gl) + var(--u) * 58);
+  --lt-y: 50%;
+  --rb-x: calc(100% - var(--gr) - var(--u) * 50);
+  --rb-y: 28%;
+  --rt-x: calc(100% - var(--gr) - var(--u) * 58);
+  --rt-y: 50%;
+}
+body:is([data-gachettes="pouces"], [data-gachettes="combat"]) .pill {
+  --w: calc(var(--u) * 22);
+  --h: calc(var(--u) * 11);
+  border-radius: calc(var(--u) * 5.5);
+}
+.pill[data-btn="LTRT"] { display: none; }
+body[data-gachettes="combat"] .pill[data-btn="LTRT"] { display: grid; font-size: calc(var(--u) * 3); }
+/* Modificateur armé d'une tape : il reste allumé jusqu'au coup suivant. */
+.pill.arme { background: rgba(116, 214, 90, .45); border: 2px solid #74d65a; color: #fff; }
 
 /* Disposition PlayStation : croix en haut à gauche, joystick gauche en bas, symétrique du droit. */
 body.ps #pad {

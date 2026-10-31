@@ -17,10 +17,12 @@
 
   <!-- Gâchettes et bumpers -->
   <!-- Chaque libellé existe en deux versions : .vx (Xbox) et .vp (PlayStation), choisies dans les réglages -->
-  <div class="btn pill" data-btn="LT" data-groupe="g" style="--x:var(--lt-x);--y:var(--haut)"><span class="vx">LT</span><span class="vp">L2</span></div>
-  <div class="btn pill" data-btn="LB" data-groupe="g" style="--x:var(--lb-x);--y:var(--haut)"><span class="vx">LB</span><span class="vp">L1</span></div>
-  <div class="btn pill" data-btn="RB" data-groupe="d" style="--x:var(--rb-x);--y:var(--haut)"><span class="vx">RB</span><span class="vp">R1</span></div>
-  <div class="btn pill" data-btn="RT" data-groupe="d" style="--x:var(--rt-x);--y:var(--haut)"><span class="vx">RT</span><span class="vp">R2</span></div>
+  <div class="btn pill" data-btn="LT" data-groupe="g" style="--x:var(--lt-x);--y:var(--lt-y)"><span class="vx">LT</span><span class="vp">L2</span></div>
+  <div class="btn pill" data-btn="LB" data-groupe="g" style="--x:var(--lb-x);--y:var(--lb-y)"><span class="vx">LB</span><span class="vp">L1</span></div>
+  <div class="btn pill" data-btn="RB" data-groupe="d" style="--x:var(--rb-x);--y:var(--rb-y)"><span class="vx">RB</span><span class="vp">R1</span></div>
+  <div class="btn pill" data-btn="RT" data-groupe="d" style="--x:var(--rt-x);--y:var(--rt-y)"><span class="vx">RT</span><span class="vp">R2</span></div>
+  <!-- Mode combat seulement : LT et RT d'un seul pouce (garde basse, attraper une jambe) -->
+  <div class="btn pill" data-btn="LTRT" data-groupe="d" style="--x:var(--ltrt-x);--y:var(--rt-y)"><span class="vx">LT+RT</span><span class="vp">L2+R2</span></div>
 
   <!-- Boutons du centre -->
   <div class="btn rond petit" data-btn="BACK" data-hit="1.35" style="--x:calc(50% - var(--u) * 14);--y:var(--haut)" aria-label="Affichage / Share">
@@ -104,6 +106,13 @@
           <option value="playstation">PlayStation : ✕ ○ □ △, L1 L2</option>
         </select>
         <small>Le jeu voit toujours une manette Xbox : seuls les noms à l'écran changent.</small></label>
+      <label>Gâchettes
+        <select data-reglage="gachettes">
+          <option value="pouces">Près des pouces</option>
+          <option value="haut">En haut, comme une manette (index)</option>
+          <option value="combat">Combat (UFC 4…) : modificateurs verrouillables</option>
+        </select>
+        <small>Combat : une tape sur LB, RB ou LT (L1, R1, L2) l'arme pour le coup suivant, par exemple LB puis X pour un crochet. Le bouton LT+RT fait la garde basse.</small></label>
       <label>Taille des commandes <output data-pour="taille"></output>
         <input type="range" data-reglage="taille" min="0.8" max="1.3" step="0.05"></label>
       <label>Opacité <output data-pour="opacite"></output>
