@@ -53,25 +53,26 @@ html, body {
   height: 100dvh;
 }
 
-/* Gâchettes près des pouces (et en mode combat) : en arc sur le bord intérieur, là où le
-   pouce arrive en pivotant depuis le bas de l'écran, au lieu de s'étirer vers les coins. */
-body:is([data-gachettes="pouces"], [data-gachettes="combat"]) #pad {
-  --lb-x: calc(var(--gl) + var(--u) * 50);
-  --lb-y: 28%;
-  --lt-x: calc(var(--gl) + var(--u) * 58);
-  --lt-y: 50%;
-  --rb-x: calc(100% - var(--gr) - var(--u) * 50);
-  --rb-y: 28%;
-  --rt-x: calc(100% - var(--gr) - var(--u) * 58);
-  --rt-y: 50%;
+/* Preset UFC 4 : gâchettes en arc sur le bord intérieur, là où le pouce arrive en pivotant
+   depuis le bas de l'écran, au lieu de s'étirer vers les coins. LT et RT au-dessus. */
+body[data-base="ufc"] #pad {
+  --lt-x: calc(var(--gl) + var(--u) * 50);
+  --lt-y: 28%;
+  --lb-x: calc(var(--gl) + var(--u) * 58);
+  --lb-y: 50%;
+  --rt-x: calc(100% - var(--gr) - var(--u) * 50);
+  --rt-y: 28%;
+  --rb-x: calc(100% - var(--gr) - var(--u) * 58);
+  --rb-y: 50%;
+  --ltrt-x: calc(100% - var(--gr) - var(--u) * 75);
 }
-body:is([data-gachettes="pouces"], [data-gachettes="combat"]) .pill {
+body[data-base="ufc"] .pill {
   --w: calc(var(--u) * 22);
   --h: calc(var(--u) * 11);
   border-radius: calc(var(--u) * 5.5);
 }
 .pill[data-btn="LTRT"] { display: none; }
-body[data-gachettes="combat"] .pill[data-btn="LTRT"] { display: grid; font-size: calc(var(--u) * 3); }
+body[data-base="ufc"] .pill[data-btn="LTRT"] { display: grid; font-size: calc(var(--u) * 3); }
 /* Modificateur armé d'une tape : il reste allumé jusqu'au coup suivant. */
 .pill.arme { background: rgba(116, 214, 90, .45); border: 2px solid #74d65a; color: #fff; }
 
@@ -285,3 +286,47 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 #portrait { display: none; z-index: 20; }
 #portrait .tourner { width: 56px; height: 56px; fill: none; stroke: #74d65a; stroke-width: 1.6; stroke-linecap: round; }
 @media (orientation: portrait) { #portrait { display: grid; } }
+
+/* ---------- Presets et mode édition ---------- */
+
+.grille label > .actions-preset { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+.actions-preset button { min-height: 38px; padding: 0 16px; font-size: 14px; }
+
+/* Cadre compact en bas au centre (la place de la pastille, cachée ici) ; il se déplace
+   par sa ligne du haut quand il couvre un bouton. */
+#edition {
+  position: fixed;
+  left: 50%;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: min(280px, 60vw);
+  padding: 6px 8px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(116, 214, 90, .5);
+  background: #161920;
+  touch-action: auto;
+}
+#edition p { width: 100%; margin: 0; padding: 2px 0; text-align: center; font-size: 12px; color: #a6abb3; cursor: grab; touch-action: none; }
+#edition input {
+  flex: 1 1 60px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: #0c0e12;
+  color: #e8eaed;
+  font: inherit;
+}
+#edition button { min-height: 36px; min-width: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .06); font-weight: 600; }
+#edition button.principal { border: none; background: #74d65a; color: #0c0e12; }
+
+body.edition :is([data-btn], [data-stick], [data-dpad]) { outline: 2px dashed rgba(116, 214, 90, .7); outline-offset: 3px; opacity: 1; }
+body.edition .deplace { outline-style: solid; z-index: 4; }
+body.edition .zone { pointer-events: none; }
+body.edition #statut { visibility: hidden; }

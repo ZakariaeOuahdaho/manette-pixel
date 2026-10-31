@@ -106,13 +106,13 @@
           <option value="playstation">PlayStation : ✕ ○ □ △, L1 L2</option>
         </select>
         <small>Le jeu voit toujours une manette Xbox : seuls les noms à l'écran changent.</small></label>
-      <label>Gâchettes
-        <select data-reglage="gachettes">
-          <option value="pouces">Près des pouces</option>
-          <option value="haut">En haut, comme une manette (index)</option>
-          <option value="combat">Combat (UFC 4…) : modificateurs verrouillables</option>
-        </select>
-        <small>Combat : une tape sur LB, RB ou LT (L1, R1, L2) l'arme pour le coup suivant, par exemple LB puis X pour un crochet. Le bouton LT+RT fait la garde basse.</small></label>
+      <label>Preset
+        <select data-reglage="preset" id="choix-preset"></select>
+        <small id="aide-preset"></small>
+        <span class="actions-preset">
+          <button id="modifier-preset" type="button">Déplacer les boutons</button>
+          <button id="supprimer-preset" type="button" hidden>Supprimer</button>
+        </span></label>
       <label>Taille des commandes <output data-pour="taille"></output>
         <input type="range" data-reglage="taille" min="0.8" max="1.3" step="0.05"></label>
       <label>Opacité <output data-pour="opacite"></output>
@@ -141,6 +141,14 @@
       <button id="plein-ecran" type="button">Plein écran</button>
     </footer>
   </div>
+</section>
+
+<!-- Mode édition : chaque bouton se déplace au doigt, puis s'enregistre comme preset -->
+<section id="edition" hidden>
+  <p id="poignee">✥ Glisse les boutons, et ce cadre, où tu veux</p>
+  <input id="nom-preset" type="text" maxlength="24" placeholder="Nom du preset" autocomplete="off">
+  <button id="enregistrer-preset" class="principal" type="button">Enregistrer</button>
+  <button id="annuler-edition" type="button" aria-label="Annuler">✕</button>
 </section>
 
 <!-- Téléphone tenu en portrait -->

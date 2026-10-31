@@ -9,7 +9,7 @@ const BITS = {
 
 const DEFAUTS = {
   taille: 1, opacite: 0.9, zoneMorte: 0.08, course: 1, flottants: true,
-  haptique: 8, vibrJeu: true, combos: true, latence: true, disposition: 'xbox', gachettes: 'pouces',
+  haptique: 8, vibrJeu: true, combos: true, latence: true, disposition: 'xbox', preset: 'normal',
 };
 
 const DOUBLE_TAP_MS = 300;      // délai max entre deux tapes pour L3 / R3
@@ -229,6 +229,7 @@ function oublier(id) {
 }
 
 pad.addEventListener('pointerdown', (e) => {
+  if (edition) { debutGlisse(e); return; }
   if (!actif || e.target.closest('#statut')) return;
   e.preventDefault();
   // Premier doigt posé : tout contact encore connu est un fantôme (relâcher jamais reçu).
@@ -254,6 +255,7 @@ pad.addEventListener('pointerdown', (e) => {
 }, { passive: false });
 
 pad.addEventListener('pointermove', (e) => {
+  if (edition) { suiteGlisse(e); return; }
   const c = contacts.get(e.pointerId);
   if (!c || (e.pointerType === 'mouse' && e.buttons === 0)) return;  // simple survol
   c.x = e.clientX;
@@ -286,9 +288,10 @@ function verrouiller(c) {
 }
 
 function relacherContact(e) {
+  if (edition) { finGlisse(e); return; }
   const c = contacts.get(e.pointerId);
   if (!c) return;
-  const change = c.type === 'bouton' && cfg.gachettes === 'combat' && verrouiller(c);
+  const change = c.type === 'bouton' && combat() && verrouiller(c);
   oublier(e.pointerId);
   maj(change);  // armer LB ne change pas l'état envoyé (il était déjà appuyé) : redessiner quand même
 }
@@ -591,7 +594,7 @@ function arreterVibration() {
 let actif = false;
 
 function recalculerActif() {
-  const ok = $('#accueil').hidden && $('#reglages').hidden && $('#erreur').hidden
+  const ok = $('#accueil').hidden && $('#reglages').hidden && $('#erreur').hidden && !edition
     && !portrait.matches && document.visibilityState === 'visible';
   if (ok === actif) return;
   if (ok) {
@@ -687,13 +690,183 @@ const FORMATS = {
   course: (v) => `${Math.round(v * 100)} %`,
 };
 
+// ---------- Presets : dispositions toutes faites, ou personnelles (boutons déplacés au doigt).
+// Un preset personnel garde la base dont il est parti (tailles, mode combat) et la position
+// de chaque élément, en fraction de l'écran pour s'adapter à un autre téléphone. ----------
+
+const PRESETS_FIXES = [
+  { id: 'normal', nom: 'Normal', base: 'normal' },
+  { id: 'ufc', nom: 'UFC 4 (combat)', base: 'ufc' },
+];
+const AIDES_PRESET = {
+  normal: 'Disposition d\'une manette classique : gâchettes en haut.',
+  ufc: 'Gâchettes près des pouces, LT et RT au-dessus. Une tape sur LB, RB ou LT (L1, R1, L2) '
+    + 'l\'arme pour le coup suivant, par exemple LB puis X pour un crochet. LT+RT fait la garde basse.',
+};
+
+function lirePersos() {
+  try {
+    const liste = JSON.parse(lire('manette.presets'));
+    return Array.isArray(liste) ? liste.filter((p) => p && p.id && p.positions) : [];
+  } catch { return []; }
+}
+let persos = lirePersos();
+
+function presetActuel() {
+  return PRESETS_FIXES.find((p) => p.id === cfg.preset) || persos.find((p) => p.id === cfg.preset) || PRESETS_FIXES[0];
+}
+function combat() { return presetActuel().base === 'ufc'; }
+
+const DEPLACABLES = Array.from(pad.querySelectorAll('[data-btn], [data-stick], [data-dpad]'));
+function cleDe(el) { return el.dataset.btn || (el.dataset.stick ? `stick${el.dataset.stick}` : 'croix'); }
+for (const el of DEPLACABLES) {
+  el.dataset.x0 = el.style.getPropertyValue('--x');
+  el.dataset.y0 = el.style.getPropertyValue('--y');
+}
+
+function appliquerPreset() {
+  const p = presetActuel();
+  cfg.preset = p.id;  // un preset supprimé retombe sur Normal
+  document.body.dataset.base = p.base;
+  for (const el of DEPLACABLES) {
+    const pos = p.positions && p.positions[cleDe(el)];
+    el.style.setProperty('--x', pos ? `${pos.x * 100}%` : el.dataset.x0);
+    el.style.setProperty('--y', pos ? `${pos.y * 100}%` : el.dataset.y0);
+  }
+  // La zone où le pouce attrape un joystick flottant suit le joystick déplacé.
+  for (const zone of pad.querySelectorAll('[data-zone]')) {
+    const pos = p.positions && p.positions[`stick${zone.dataset.zone}`];
+    Object.assign(zone.style, pos ? {
+      left: `calc(${pos.x * 100}% - var(--u) * 28)`, top: `calc(${pos.y * 100}% - var(--u) * 28)`,
+      width: 'calc(var(--u) * 56)', height: 'calc(var(--u) * 56)', right: 'auto', bottom: 'auto',
+    } : { left: '', top: '', width: '', height: '', right: '', bottom: '' });
+  }
+  if (!combat()) armes.clear();
+  $('#aide-preset').textContent = AIDES_PRESET[p.id]
+    || `Ton preset, parti de « ${PRESETS_FIXES.find((f) => f.id === p.base).nom} ».`;
+  $('#supprimer-preset').hidden = !persos.includes(p);
+}
+
+function remplirPresets() {
+  $('#choix-preset').replaceChildren(...[...PRESETS_FIXES, ...persos].map((p) => new Option(p.nom, p.id)));
+}
+
+function enregistrerPersos() {
+  ecrire('manette.presets', JSON.stringify(persos));
+  ecrire('manette.reglages', JSON.stringify(cfg));
+}
+
+// ---------- Mode édition : on touche un bouton et on le fait glisser où on veut ----------
+
+let edition = null;  // { perso: preset personnel modifié ou null, glisse: déplacement en cours }
+
+function ouvrirEdition() {
+  const p = presetActuel();
+  edition = { perso: persos.includes(p) ? p : null, glisse: null };
+  $('#nom-preset').value = edition.perso ? edition.perso.nom : '';
+  for (const prop of ['left', 'top', 'bottom', 'transform']) $('#edition').style[prop] = '';  // cadre à sa place
+  $('#reglages').hidden = true;
+  $('#edition').hidden = false;
+  document.body.classList.add('edition');
+  recalculerActif();
+  for (const el of pad.querySelectorAll('[data-stick]')) el.style.transform = '';  // joysticks au repos
+}
+
+function fermerEdition(enregistrer) {
+  if (enregistrer) {
+    const r = pad.getBoundingClientRect();
+    const positions = {};
+    for (const el of DEPLACABLES) {
+      if (!el.getClientRects().length) continue;  // LT+RT, masqué hors UFC
+      const c = centre(el);
+      positions[cleDe(el)] = { x: +((c.cx - r.left) / r.width).toFixed(4), y: +((c.cy - r.top) / r.height).toFixed(4) };
+    }
+    const nom = $('#nom-preset').value.trim() || `Mon preset ${persos.length + 1}`;
+    if (edition.perso) {
+      Object.assign(edition.perso, { nom, positions });
+    } else {
+      const p = { id: `perso-${Date.now()}`, nom, base: presetActuel().base, positions };
+      persos.push(p);
+      cfg.preset = p.id;
+    }
+    enregistrerPersos();
+  }
+  edition = null;
+  document.body.classList.remove('edition');
+  $('#edition').hidden = true;
+  appliquerReglages();  // après « Annuler », remet les positions du preset
+  recalculerActif();
+}
+
+function debutGlisse(e) {
+  const el = e.target.closest('[data-btn], [data-stick], [data-dpad]');
+  if (!el || edition.glisse) return;
+  e.preventDefault();
+  const c = centre(el);
+  edition.glisse = { el, id: e.pointerId, dx: c.cx - e.clientX, dy: c.cy - e.clientY, demiL: c.dx, demiH: c.dy };
+  el.classList.add('deplace');
+}
+
+function suiteGlisse(e) {
+  const g = edition.glisse;
+  if (!g || g.id !== e.pointerId) return;
+  const r = pad.getBoundingClientRect();
+  // Le bouton reste entièrement à l'écran.
+  const x = Math.min(Math.max(e.clientX + g.dx, r.left + g.demiL), r.right - g.demiL);
+  const y = Math.min(Math.max(e.clientY + g.dy, r.top + g.demiH), r.bottom - g.demiH);
+  g.el.style.setProperty('--x', `${((x - r.left) / r.width) * 100}%`);
+  g.el.style.setProperty('--y', `${((y - r.top) / r.height) * 100}%`);
+}
+
+function finGlisse(e) {
+  const g = edition.glisse;
+  if (!g || g.id !== e.pointerId) return;
+  g.el.classList.remove('deplace');
+  edition.glisse = null;
+}
+
+// Le cadre d'édition se déplace par sa ligne du haut, pour dégager un bouton qu'il couvre.
+$('#poignee').addEventListener('pointerdown', (e) => {
+  const poignee = e.currentTarget;
+  const cadre = $('#edition');
+  const r = cadre.getBoundingClientRect();
+  const dx = e.clientX - r.left;
+  const dy = e.clientY - r.top;
+  try { poignee.setPointerCapture(e.pointerId); } catch { /* sans capture, le glisser marche tant que le doigt reste dessus */ }
+  const bouger = (m) => {
+    const x = Math.min(Math.max(m.clientX - dx, 0), innerWidth - r.width);
+    const y = Math.min(Math.max(m.clientY - dy, 0), innerHeight - r.height);
+    Object.assign(cadre.style, { left: `${x}px`, top: `${y}px`, bottom: 'auto', transform: 'none' });
+  };
+  const fin = () => {
+    poignee.removeEventListener('pointermove', bouger);
+    poignee.removeEventListener('pointerup', fin);
+    poignee.removeEventListener('pointercancel', fin);
+  };
+  poignee.addEventListener('pointermove', bouger);
+  poignee.addEventListener('pointerup', fin);
+  poignee.addEventListener('pointercancel', fin);
+});
+
+$('#modifier-preset').addEventListener('click', ouvrirEdition);
+$('#enregistrer-preset').addEventListener('click', () => fermerEdition(true));
+$('#annuler-edition').addEventListener('click', () => fermerEdition(false));
+$('#supprimer-preset').addEventListener('click', () => {
+  const p = presetActuel();
+  if (!persos.includes(p) || !window.confirm(`Supprimer le preset « ${p.nom} » ?`)) return;
+  persos = persos.filter((q) => q !== p);
+  cfg.preset = p.base;  // retour au preset d'origine
+  enregistrerPersos();
+  remplirReglages();
+  appliquerReglages();
+});
+
 function appliquerReglages() {
   pad.style.setProperty('--taille', cfg.taille);
   pad.style.setProperty('--opacite', cfg.opacite);
   pad.classList.toggle('flottants', cfg.flottants);
   document.body.classList.toggle('ps', cfg.disposition === 'playstation');
-  document.body.dataset.gachettes = cfg.gachettes;
-  if (cfg.gachettes !== 'combat') armes.clear();
+  appliquerPreset();
   for (const o of document.querySelectorAll('output[data-pour]')) {
     o.textContent = FORMATS[o.dataset.pour](cfg[o.dataset.pour]);
   }
@@ -701,6 +874,7 @@ function appliquerReglages() {
 }
 
 function remplirReglages() {
+  remplirPresets();
   for (const el of document.querySelectorAll('[data-reglage]')) {
     const cle = el.dataset.reglage;
     if (el.type === 'checkbox') el.checked = cfg[cle];

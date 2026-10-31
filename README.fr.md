@@ -134,11 +134,13 @@ qui le relie au PC.
 | L3 / R3 (clic du joystick) | **Double-tape puis maintiens** le joystick. Le pommeau devient vert, et tu peux continuer à diriger pendant ce temps (par exemple pour sprinter). |
 | Croix | Le pouce peut glisser d'une direction à l'autre, diagonales comprises, et déborder de la croix sans la lâcher. |
 | A B X Y | Le pouce glisse d'un bouton à l'autre. Un appui **entre** deux boutons voisins presse les deux (désactivable). |
-| LT LB / RB RT | Réglage **Gâchettes** : **près des pouces** (par défaut), en arc à côté des joysticks, pour que le pouce pivote au lieu de s'étirer ; **en haut** comme une vraie manette, si tu tiens le téléphone avec les index sur le bord du haut ; ou **combat** (voir plus bas). Glisser d'une gâchette à l'autre fonctionne aussi. |
+| LT LB / RB RT | Selon le **preset** choisi dans les réglages : **Normal** (gâchettes en haut, comme une vraie manette), **UFC 4** (voir plus bas), ou le tien. Glisser d'une gâchette à l'autre fonctionne aussi. |
 | Pastille en bas | Elle affiche le n° de joueur et la latence. Un appui ouvre les **réglages** : taille, opacité, zone morte, course des joysticks, vibrations… |
 | Boutons affichés | Dans les réglages, choisis **Xbox** (A B X Y, LB LT) ou **PlayStation** (✕ ○ □ △, L1 L2, croix en haut à gauche et les deux joysticks en bas). Le jeu voit toujours une manette Xbox. |
 
-**Mode combat** (UFC 4 et autres jeux de combat). Dans UFC 4, presque tout est un modificateur tenu plus un coup : LB + X fait un crochet, LT + X une amenée au sol, RB + X un clinch. Un seul pouce ne peut pas tenir RB et appuyer sur X en même temps. Dans ce mode, **une tape sur LB, RB ou LT l'arme** pour le coup suivant, et le bouton s'allume en vert. Tape LB puis X : le jeu reçoit LB + X. Une deuxième tape désarme, et tenir le bouton marche toujours normalement. Un bouton **LT+RT** en plus fait la garde basse et attrape une jambe d'un seul pouce.
+**Preset UFC 4.** Les gâchettes sont près des pouces, LT/RT au-dessus de LB/RB : le pouce pivote au lieu de s'étirer. Dans UFC 4, presque tout est un modificateur tenu plus un coup : LB + X fait un crochet, LT + X une amenée au sol, RB + X un clinch. Un seul pouce ne peut pas tenir RB et appuyer sur X en même temps. Ici, **une tape sur LB, RB ou LT l'arme** pour le coup suivant, et le bouton s'allume en vert. Tape LB puis X : le jeu reçoit LB + X. Une deuxième tape désarme, et tenir le bouton marche toujours normalement. Un bouton **LT+RT** en plus fait la garde basse et attrape une jambe d'un seul pouce.
+
+**Tes propres presets.** Dans les réglages, touche **Déplacer les boutons** : chaque bouton, les joysticks et la croix se glissent où tu veux. Le cadre en bas se déplace lui aussi par sa ligne du haut s'il gêne. Donne un nom, puis **Enregistrer** : le preset est gardé sur le téléphone et apparaît dans la liste. Il garde le comportement du preset de départ (parti d'UFC 4, il garde les modificateurs verrouillables). Réglages → **Supprimer** l'efface.
 | Geste « retour » d'Android | Il met la partie en pause sans quitter la page. |
 
 Le bouton Xbox du milieu ouvre aussi la **Game Bar** de Windows, comme une vraie manette.
