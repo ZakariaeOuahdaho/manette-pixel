@@ -67,6 +67,7 @@ Wi-Fi: these networks block devices from reaching each other.
 | L3 / R3 | Double-tap and hold the stick |
 | D-pad, A B X Y | Slide your thumb between buttons. Pressing between two face buttons presses both. |
 | Status pill | Shows the player number and latency. Tap it for settings: size, opacity, dead zone, rumble… |
+| Button labels | In settings, choose **Xbox** (A B X Y, LB LT) or **PlayStation** (✕ ○ □ △, L1 L2). Only the labels change: games still see an Xbox controller. |
 | Android back gesture | Pauses the game; it doesn't leave the page |
 
 ## Troubleshooting

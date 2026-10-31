@@ -9,7 +9,7 @@ const BITS = {
 
 const DEFAUTS = {
   taille: 1, opacite: 0.9, zoneMorte: 0.08, course: 1, flottants: true,
-  haptique: 8, vibrJeu: true, combos: true, latence: true,
+  haptique: 8, vibrJeu: true, combos: true, latence: true, disposition: 'xbox',
 };
 
 const DOUBLE_TAP_MS = 300;      // délai max entre deux tapes pour L3 / R3
@@ -656,6 +656,7 @@ function appliquerReglages() {
   pad.style.setProperty('--taille', cfg.taille);
   pad.style.setProperty('--opacite', cfg.opacite);
   pad.classList.toggle('flottants', cfg.flottants);
+  document.body.classList.toggle('ps', cfg.disposition === 'playstation');
   for (const o of document.querySelectorAll('output[data-pour]')) {
     o.textContent = FORMATS[o.dataset.pour](cfg[o.dataset.pour]);
   }
@@ -675,6 +676,7 @@ function surReglage(e) {
   const cle = el.dataset.reglage;
   if (el.type === 'checkbox') cfg[cle] = el.checked;
   else if (typeof DEFAUTS[cle] === 'boolean') cfg[cle] = el.value === 'true';
+  else if (typeof DEFAUTS[cle] === 'string') cfg[cle] = el.value;
   else cfg[cle] = parseFloat(el.value);
   ecrire('manette.reglages', JSON.stringify(cfg));
   appliquerReglages();

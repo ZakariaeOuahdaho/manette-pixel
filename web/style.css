@@ -95,6 +95,19 @@ html, body {
 .face.x.on { background: #55a9ff; color: #0c0e12; }
 .face.y.on { background: #ffd23f; color: #0c0e12; }
 
+/* Disposition PlayStation : mêmes boutons, autres noms et couleurs (classe .ps sur body). */
+body:not(.ps) .vp, body.ps .vx { display: none; }
+.face svg { stroke-width: 2.6; }
+.guide .vp { font-size: calc(var(--u) * 3.6); }
+body.ps .face.a { color: #8fb4ff; border-color: rgba(143, 180, 255, .55); }
+body.ps .face.b { color: #ff6b6b; border-color: rgba(255, 107, 107, .55); }
+body.ps .face.x { color: #f093d9; border-color: rgba(240, 147, 217, .55); }
+body.ps .face.y { color: #4fd6b4; border-color: rgba(79, 214, 180, .55); }
+body.ps .face.a.on { background: #8fb4ff; color: #0c0e12; }
+body.ps .face.b.on { background: #ff6b6b; color: #0c0e12; }
+body.ps .face.x.on { background: #f093d9; color: #0c0e12; }
+body.ps .face.y.on { background: #4fd6b4; color: #0c0e12; }
+
 /* ---------- Croix directionnelle ---------- */
 
 .dpad {
@@ -216,7 +229,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .carte.large footer { margin-top: 16px; justify-content: flex-start; }
 .grille { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; margin-top: 12px; }
 .grille label { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; font-size: 14px; color: #cfd3d9; }
-.grille label > input[type="range"], .grille label > select { grid-column: 1 / -1; }
+.grille label > input[type="range"], .grille label > select, .grille label > small { grid-column: 1 / -1; }
+.grille label > small { color: #8b9098; font-size: 12px; }
 .grille label output { color: #74d65a; font-variant-numeric: tabular-nums; }
 .grille label.case { display: flex; align-items: center; gap: 10px; min-height: 36px; }
 .grille input[type="range"] { width: 100%; height: 28px; accent-color: #74d65a; }
