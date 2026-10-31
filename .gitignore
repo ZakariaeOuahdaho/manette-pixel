@@ -1,3 +1,6 @@
 .venv/
 __pycache__/
 config.json
+platform-tools/
+platform-tools.zip
+.platform-tools-tmp/

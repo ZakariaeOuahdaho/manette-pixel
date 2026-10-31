@@ -17,8 +17,10 @@ Choix qui rendent le tout fiable :
 
 import argparse
 import asyncio
+import importlib.util
 import json
 import os
+import platform
 import secrets
 import shutil
 import socket
@@ -26,7 +28,9 @@ import struct
 import subprocess
 import sys
 import time
+import urllib.request
 import webbrowser
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -35,6 +39,8 @@ from aiohttp import WSMsgType, web
 ICI = Path(__file__).resolve().parent
 WEB = ICI / "web"
 CONFIG = ICI / "config.json"
+ADB_LOCAL = ICI / "platform-tools" / "adb.exe"
+URL_ADB = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
 
 PORT_DEFAUT = 8765
 MAX_MANETTES = 4  # limite de XInput
@@ -59,17 +65,74 @@ def journal(texte):
     print(f"[{datetime.now():%H:%M:%S}] {texte}", flush=True)
 
 
-try:
-    import vgamepad as vg
-except Exception as erreur:  # le pilote absent fait échouer l'import lui-même
+def desactiver_selection_console():
+    """Dans la console Windows classique, un clic dans la fenêtre démarre une sélection
+    qui bloque l'affichage : le serveur, et donc la manette, se figeraient avec lui."""
+    if sys.platform != "win32":
+        return
+    import ctypes
+
+    noyau = ctypes.windll.kernel32
+    entree = noyau.GetStdHandle(-10)  # STD_INPUT_HANDLE
+    mode = ctypes.c_uint32()
+    if noyau.GetConsoleMode(entree, ctypes.byref(mode)):
+        # ENABLE_EXTENDED_FLAGS (0x80) est requis pour retirer ENABLE_QUICK_EDIT_MODE (0x40).
+        noyau.SetConsoleMode(entree, (mode.value | 0x80) & ~0x40)
+
+
+def installateur_vigem():
+    """L'installateur ViGEmBus que vgamepad embarque, trouvé sans importer vgamepad."""
+    spec = importlib.util.find_spec("vgamepad")
+    if spec is None or not spec.submodule_search_locations:
+        return None
+    # Le pilote suit l'architecture de Windows, pas celle de Python.
+    arch = "x86" if platform.machine().lower() in ("x86", "i386", "i686") else "x64"
+    chemin = (Path(spec.submodule_search_locations[0]) / "win" / "vigem" / "install"
+              / arch / f"ViGEmBusSetup_{arch}.msi")
+    return chemin if chemin.exists() else None
+
+
+def importer_vgamepad():
+    """vgamepad se connecte au pilote ViGEmBus dès son import. S'il manque, on lance
+    l'installation du pilote fourni avec vgamepad, puis on réessaie."""
+    try:
+        import vgamepad
+        return vgamepad
+    except ImportError as erreur:
+        print(f"\nInstallation incomplète ({erreur}).\n"
+              "Supprime le dossier .venv puis relance lancer.bat.\n", file=sys.stderr)
+        sys.exit(1)
+    except Exception as erreur:  # RuntimeError : pilote absent ou arrêté
+        derniere_erreur = erreur
+
+    installateur = installateur_vigem()
+    if installateur is not None:
+        print("\n  Le pilote de manette virtuelle (ViGEmBus) n'est pas installé.\n"
+              "  Son installation s'ouvre : accepte la licence, clique sur Install,\n"
+              "  puis sur Oui quand Windows demande l'autorisation.\n", flush=True)
+        code = subprocess.run(["msiexec", "/i", str(installateur)]).returncode
+        if code == 3010:
+            print("\nLe pilote est installé, mais Windows doit redémarrer.\n"
+                  "Redémarre le PC, puis relance lancer.bat.\n", file=sys.stderr)
+            sys.exit(1)
+        if code == 0:
+            try:
+                import vgamepad
+                print("  Pilote installé.\n", flush=True)
+                return vgamepad
+            except Exception as erreur:
+                derniere_erreur = erreur
+
     print(
-        "\nImpossible de joindre le pilote ViGEmBus : "
-        f"{erreur}\n"
-        "Installe-le depuis https://github.com/nefarius/ViGEmBus/releases "
-        "(ViGEmBus_*_x64_x86_arm64.exe), redémarre si demandé, puis relance.\n",
+        f"\nImpossible de joindre le pilote ViGEmBus ({derniere_erreur}).\n"
+        "Installe-le à la main depuis https://github.com/nefarius/ViGEmBus/releases "
+        "(ViGEmBus_*_x64_x86_arm64.exe), redémarre le PC, puis relance.\n",
         file=sys.stderr,
     )
     sys.exit(1)
+
+
+vg = importer_vgamepad()
 
 
 def octet_signe(valeur):
@@ -90,6 +153,7 @@ class Manette:
         self.vibration = (0, 0)
         self.dernier_message = 0.0
         self.neutre = True
+        self.usb = False  # téléphone relié par le câble (adb reverse)
         self.pad = vg.VX360Gamepad()
         self.pad.register_notification(callback_function=self._notification)
 
@@ -211,6 +275,7 @@ class Serveur:
         ancienne = manette.ws
         manette.client_id = client_id
         manette.ws = ws
+        manette.usb = local
         manette.dernier_message = time.monotonic()
         if ancienne is not None and not ancienne.closed:
             await ancienne.close(code=FERMETURE_REMPLACEE, message=b"remplacee")
@@ -269,6 +334,9 @@ class Serveur:
             if manette.ws is ws and time.monotonic() - manette.dernier_message > CHIEN_DE_GARDE_S:
                 manette.neutraliser()
 
+    def usb_connecte(self):
+        return any(m.ws is not None and m.usb for m in self.manettes)
+
     def faire_menage(self):
         maintenant = time.monotonic()
         for manette in list(self.manettes):
@@ -309,7 +377,31 @@ def trouver_adb():
             candidat = Path(base) / "platform-tools" / "adb.exe"
             if candidat.exists():
                 return str(candidat)
+    if ADB_LOCAL.exists():
+        return str(ADB_LOCAL)
     return None
+
+
+def telecharger_adb():
+    """Récupère adb (outils officiels de Google, environ 7 Mo) dans le dossier du projet."""
+    print("  Premier lancement : téléchargement d'adb pour le mode USB (7 Mo)...", flush=True)
+    archive = ICI / "platform-tools.zip"
+    provisoire = ICI / ".platform-tools-tmp"
+    try:
+        with urllib.request.urlopen(URL_ADB, timeout=30) as reponse, open(archive, "wb") as f:
+            shutil.copyfileobj(reponse, f)
+        shutil.rmtree(provisoire, ignore_errors=True)
+        with zipfile.ZipFile(archive) as z:
+            z.extractall(provisoire)
+        # Extraire à côté puis renommer : une coupure ne laisse jamais un adb à moitié écrit.
+        (provisoire / "platform-tools").rename(ADB_LOCAL.parent)
+    except (OSError, zipfile.BadZipFile) as erreur:
+        print(f"  Téléchargement impossible ({erreur}).", flush=True)
+        return None
+    finally:
+        archive.unlink(missing_ok=True)
+        shutil.rmtree(provisoire, ignore_errors=True)
+    return str(ADB_LOCAL) if ADB_LOCAL.exists() else None
 
 
 async def adb(chemin, *args):
@@ -317,21 +409,45 @@ async def adb(chemin, *args):
     proc = await asyncio.create_subprocess_exec(
         chemin, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **options)
     try:
-        sortie, _ = await asyncio.wait_for(proc.communicate(), 15)
+        sortie, erreurs = await asyncio.wait_for(proc.communicate(), 15)
     except asyncio.TimeoutError:
         proc.kill()
-        return 1, ""
-    return proc.returncode, sortie.decode(errors="replace")
+        return 1, "", ""
+    return proc.returncode, sortie.decode(errors="replace"), erreurs.decode(errors="replace")
 
 
-async def surveiller_usb(chemin_adb, port):
+async def ouvrir_sur_telephone(chemin_adb, serie, port):
+    """Ouvre la manette dans Chrome sur le téléphone. L'identifiant d'application fait
+    réutiliser le même onglet par Chrome au lieu d'en empiler un à chaque branchement."""
+    intention = ["-s", serie, "shell", "am", "start", "-a", "android.intent.action.VIEW",
+                 "-d", f"http://localhost:{port}",
+                 "--es", "com.android.browser.application_id", "manette-pixel"]
+    for paquet in (["-p", "com.android.chrome"], []):  # sans Chrome : le navigateur par défaut
+        code, sortie, erreurs = await adb(chemin_adb, *intention, *paquet)
+        if code == 0 and "Error" not in sortie + erreurs:
+            return True
+    return False
+
+
+async def proposer_page(serveur, chemin_adb, serie, port):
+    # Une page déjà ouverte se reconnecte seule en 1 à 3 s : ne pas la recharger en pleine partie.
+    await asyncio.sleep(4)
+    if serveur.usb_connecte():
+        return
+    if await ouvrir_sur_telephone(chemin_adb, serie, port):
+        journal("La manette s'ouvre dans Chrome sur le téléphone (déverrouille-le si besoin)")
+    else:
+        journal(f"Ouvre http://localhost:{port} dans Chrome sur le téléphone")
+
+
+async def surveiller_usb(serveur, chemin_adb, port):
     """Relie automatiquement chaque téléphone branché en USB : sur le téléphone,
     localhost:<port> mène alors au PC (adb reverse), quel que soit le réseau."""
     relies = set()
     signales = set()
     while True:
         try:
-            _, sortie = await adb(chemin_adb, "devices")
+            _, sortie, _ = await adb(chemin_adb, "devices")
         except OSError:
             return
         appareils = {}
@@ -341,11 +457,14 @@ async def surveiller_usb(chemin_adb, port):
                 appareils[morceaux[0]] = morceaux[1]
 
         for serie, etat in appareils.items():
-            if etat == "device" and serie not in relies:
-                code, _ = await adb(chemin_adb, "-s", serie, "reverse", f"tcp:{port}", f"tcp:{port}")
-                if code == 0:
+            if etat == "device":
+                # Reposé à chaque tour : si le service adb redémarre (Android Studio, autre
+                # version d'adb), la redirection disparaît sans que le téléphone se débranche.
+                code, _, _ = await adb(chemin_adb, "-s", serie, "reverse", f"tcp:{port}", f"tcp:{port}")
+                if code == 0 and serie not in relies:
                     relies.add(serie)
-                    journal(f"Téléphone branché en USB : ouvre http://localhost:{port} dans Chrome")
+                    journal("Téléphone branché en USB")
+                    asyncio.create_task(proposer_page(serveur, chemin_adb, serie, port))
             elif etat == "unauthorized" and serie not in signales:
                 signales.add(serie)
                 journal("Téléphone branché en USB mais pas encore autorisé : "
@@ -438,8 +557,8 @@ def page_qr(url):
   <code>{url}</code>
   <p>Le téléphone doit être sur le même Wi-Fi que ce PC.
      Tu peux fermer cette page, le serveur continue de tourner.</p>
-  <p>Le téléphone partage sa connexion avec ce PC ? Le Wi-Fi ne marchera pas :
-     branche-le en USB (débogage USB activé) et ouvre <b>http://localhost:8765</b> dans Chrome.</p>
+  <p>Le téléphone partage sa connexion avec ce PC, ou le Wi-Fi ne passe pas ?
+     Branche-le en USB (débogage USB activé) : la manette s'ouvre toute seule dessus.</p>
 </main></body></html>"""
 
 
@@ -449,6 +568,7 @@ def main():
     parser.add_argument("--nouveau-jeton", action="store_true", help="invalide les anciens liens et QR codes")
     parser.add_argument("--sans-navigateur", action="store_true", help="n'ouvre pas la page QR sur le PC")
     args = parser.parse_args()
+    desactiver_selection_console()
 
     jeton = charger_jeton(args.nouveau_jeton)
     ip = ip_locale()
@@ -482,20 +602,25 @@ def main():
         for autre in autres:
             print(f"    http://{autre}:{args.port}/?k={jeton}")
     chemin_adb = trouver_adb()
+    if chemin_adb is None and sys.platform == "win32":
+        chemin_adb = telecharger_adb()
     if chemin_adb:
-        print(f"\n  Par câble USB (débogage USB activé) : ouvre http://localhost:{args.port} sur le téléphone.")
+        print("\n  Par câble USB (débogage USB activé) : branche le téléphone, la manette s'y ouvre toute seule.")
         print("  Marche même quand le téléphone partage sa connexion avec le PC.")
 
         async def demarrer_usb(app):
-            app["usb"] = asyncio.create_task(surveiller_usb(chemin_adb, args.port))
+            app["usb"] = asyncio.create_task(surveiller_usb(serveur, chemin_adb, args.port))
 
         async def arreter_usb(app):
             app["usb"].cancel()
+            if chemin_adb == str(ADB_LOCAL):
+                # Notre adb resterait en tâche de fond et verrouillerait le dossier du projet.
+                await adb(chemin_adb, "kill-server")
 
         app.on_startup.append(demarrer_usb)
         app.on_cleanup.append(arreter_usb)
     else:
-        print("\n  (adb introuvable : le mode USB est désactivé, voir README.)")
+        print("\n  (adb indisponible : le mode USB est désactivé pour cette fois, voir README.)")
 
     print("\n  Rien ne se passe sur le téléphone ? Voir « Dépannage » dans le README.")
     print("  Ctrl+C pour arrêter.\n", flush=True)
