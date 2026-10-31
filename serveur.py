@@ -2,7 +2,8 @@
 
 Le serveur sert l'interface manette (dossier web/) au téléphone, puis reçoit
 par WebSocket l'état complet de la manette (boutons, gâchettes, joysticks) et
-l'applique à une manette Xbox 360 virtuelle créée via ViGEmBus (vgamepad).
+l'applique à une manette Xbox 360 virtuelle créée par vgamepad : via le pilote
+ViGEmBus sous Windows, via uinput sous Linux.
 
 Choix qui rendent le tout fiable :
 - le téléphone envoie toujours l'état COMPLET, jamais des événements
@@ -33,21 +34,27 @@ import webbrowser
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 from aiohttp import WSMsgType, web
+
+WINDOWS = sys.platform == "win32"
+LINUX = sys.platform.startswith("linux")
 
 ICI = Path(__file__).resolve().parent
 WEB = ICI / "web"
 CONFIG = ICI / "config.json"
-ADB_LOCAL = ICI / "platform-tools" / "adb.exe"
-URL_ADB = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+ADB_LOCAL = ICI / "platform-tools" / ("adb.exe" if WINDOWS else "adb")
+URL_ADB = ("https://dl.google.com/android/repository/platform-tools-latest-"
+           + ("windows" if WINDOWS else "linux") + ".zip")
+LANCEUR = "lancer.bat" if WINDOWS else "./lancer.sh"
 
 PORT_DEFAUT = 8765
 MAX_MANETTES = 4  # limite de XInput
 CHIEN_DE_GARDE_S = 1.0
 DELAI_BONJOUR_S = 5.0
 DELAI_REPRISE_S = 10.0  # au-delà, la manette d'un téléphone parti peut passer à un autre
-DELAI_RETRAIT_S = 120.0  # au-delà, elle est débranchée de Windows
+DELAI_RETRAIT_S = 120.0  # au-delà, elle est débranchée du PC
 
 # Message binaire envoyé par le téléphone, 13 octets, petit-boutiste :
 # type (1 = état), boutons XUSB, LT, RT, LX, LY, RX, RY.
@@ -68,7 +75,7 @@ def journal(texte):
 def desactiver_selection_console():
     """Dans la console Windows classique, un clic dans la fenêtre démarre une sélection
     qui bloque l'affichage : le serveur, et donc la manette, se figeraient avec lui."""
-    if sys.platform != "win32":
+    if not WINDOWS:
         return
     import ctypes
 
@@ -92,9 +99,39 @@ def installateur_vigem():
     return chemin if chemin.exists() else None
 
 
+def importer_vgamepad_linux():
+    """Sous Linux, la manette virtuelle passe par uinput : il faut la bibliothèque
+    libevdev et le droit d'écrire dans /dev/uinput (règle posée par lancer.sh)."""
+    try:
+        import vgamepad
+    except (ImportError, OSError) as erreur:  # libevdev.so absente : OSError de ctypes
+        print(f"\nlibevdev est introuvable ({erreur}).\n"
+              "Installe-la (Debian/Ubuntu : sudo apt install libevdev2, Fedora/Arch : libevdev),\n"
+              "puis relance ./lancer.sh.\n", file=sys.stderr)
+        sys.exit(1)
+    try:
+        with open("/dev/uinput", "r+b", buffering=0):
+            pass
+    except FileNotFoundError:
+        print("\n/dev/uinput n'existe pas : charge le module avec « sudo modprobe uinput », "
+              "puis relance ./lancer.sh.\n", file=sys.stderr)
+        sys.exit(1)
+    except PermissionError:
+        print("\nPas le droit de créer une manette virtuelle (/dev/uinput).\n"
+              "Relance ./lancer.sh et accepte d'installer la règle système, puis "
+              "déconnecte-toi et reconnecte-toi si ça ne suffit pas.\n", file=sys.stderr)
+        sys.exit(1)
+    return vgamepad
+
+
 def importer_vgamepad():
     """vgamepad se connecte au pilote ViGEmBus dès son import. S'il manque, on lance
     l'installation du pilote fourni avec vgamepad, puis on réessaie."""
+    if LINUX:
+        return importer_vgamepad_linux()
+    if not WINDOWS:
+        print("\nManette Pixel fonctionne sous Windows et Linux seulement.\n", file=sys.stderr)
+        sys.exit(1)
     try:
         import vgamepad
         return vgamepad
@@ -162,7 +199,8 @@ class Manette:
         self.boucle.call_soon_threadsafe(self._sur_notification, gros_moteur, petit_moteur, led)
 
     def _sur_notification(self, gros_moteur, petit_moteur, led):
-        joueur = led + 1 if led < 4 else None
+        # Sous Linux, vgamepad annonce toujours la LED 0 : le n° de joueur n'y veut rien dire.
+        joueur = led + 1 if WINDOWS and led < 4 else None
         if joueur != self.joueur:
             self.joueur = joueur
             self.envoyer({"t": "joueur", "joueur": joueur})
@@ -184,15 +222,22 @@ class Manette:
 
     def appliquer(self, donnees):
         _, boutons, lt, rt, lx, ly, rx, ry = ETAT.unpack(donnees)
-        rapport = self.pad.report
-        rapport.wButtons = boutons
-        rapport.bLeftTrigger = octet_signe(lt)
-        rapport.bRightTrigger = octet_signe(rt)
-        rapport.sThumbLX = lx
-        rapport.sThumbLY = ly
-        rapport.sThumbRX = rx
-        rapport.sThumbRY = ry
-        self.pad.update()
+        if LINUX:
+            # Sous Linux, vgamepad relit les gâchettes dans son rapport en c_byte signé et
+            # enverrait -1 pour 255 : on lui passe directement les valeurs non signées.
+            self.pad.update_from_report(SimpleNamespace(
+                wButtons=boutons, bLeftTrigger=lt, bRightTrigger=rt,
+                sThumbLX=lx, sThumbLY=ly, sThumbRX=rx, sThumbRY=ry))
+        else:
+            rapport = self.pad.report
+            rapport.wButtons = boutons
+            rapport.bLeftTrigger = octet_signe(lt)
+            rapport.bRightTrigger = octet_signe(rt)
+            rapport.sThumbLX = lx
+            rapport.sThumbLY = ly
+            rapport.sThumbRX = rx
+            rapport.sThumbRY = ry
+            self.pad.update()
         self.neutre = not (boutons or lt or rt or lx or ly or rx or ry)
 
     def neutraliser(self):
@@ -202,12 +247,16 @@ class Manette:
             self.neutre = True
 
     def retirer(self):
-        """Débranche la manette virtuelle de Windows."""
-        # Le rappel ctypes garde une référence vers self : sans casser ce cycle, la
-        # manette resterait branchée jusqu'au passage du ramasse-miettes.
-        if self.pad.cmp_func is not None:
+        """Débranche la manette virtuelle du PC."""
+        # Le rappel de notification garde une référence vers self : sans casser ce cycle,
+        # la manette resterait branchée (Windows : jusqu'au ramasse-miettes ; Linux : pour
+        # toujours, car le fil des vibrations de vgamepad tient le rappel).
+        if WINDOWS:
+            if self.pad.cmp_func is not None:
+                self.pad.unregister_notification()
+                self.pad.cmp_func = None
+        else:
             self.pad.unregister_notification()
-            self.pad.cmp_func = None
         self.pad = None  # vgamepad débranche la manette en libérant l'objet
 
 
@@ -371,10 +420,11 @@ def trouver_adb():
     if chemin:
         return chemin
     bases = [os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT"),
-             os.path.join(os.environ.get("LOCALAPPDATA", ""), "Android", "Sdk")]
+             os.path.join(os.environ.get("LOCALAPPDATA", ""), "Android", "Sdk") if WINDOWS
+             else os.path.expanduser("~/Android/Sdk")]
     for base in bases:
         if base:
-            candidat = Path(base) / "platform-tools" / "adb.exe"
+            candidat = Path(base) / "platform-tools" / ADB_LOCAL.name
             if candidat.exists():
                 return str(candidat)
     if ADB_LOCAL.exists():
@@ -393,6 +443,8 @@ def telecharger_adb():
         shutil.rmtree(provisoire, ignore_errors=True)
         with zipfile.ZipFile(archive) as z:
             z.extractall(provisoire)
+        executable = provisoire / "platform-tools" / ADB_LOCAL.name
+        executable.chmod(executable.stat().st_mode | 0o111)  # zipfile perd le bit exécutable
         # Extraire à côté puis renommer : une coupure ne laisse jamais un adb à moitié écrit.
         (provisoire / "platform-tools").rename(ADB_LOCAL.parent)
     except (OSError, zipfile.BadZipFile) as erreur:
@@ -405,7 +457,7 @@ def telecharger_adb():
 
 
 async def adb(chemin, *args):
-    options = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+    options = {"creationflags": subprocess.CREATE_NO_WINDOW} if WINDOWS else {}
     proc = await asyncio.create_subprocess_exec(
         chemin, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **options)
     try:
@@ -469,11 +521,15 @@ async def surveiller_usb(serveur, chemin_adb, port):
                 signales.add(serie)
                 journal("Téléphone branché en USB mais pas encore autorisé : "
                         "accepte « Autoriser le débogage USB » sur l'écran du téléphone")
+            elif etat == "no" and serie not in signales:  # « no permissions » : Linux sans règle udev
+                signales.add(serie)
+                journal("Téléphone branché en USB, mais Linux refuse l'accès au port USB : "
+                        "relance ./lancer.sh et accepte d'installer la règle système")
         for serie in list(relies):
             if appareils.get(serie) != "device":
                 relies.discard(serie)
                 journal("Téléphone USB débranché")
-        signales &= {s for s, e in appareils.items() if e == "unauthorized"}
+        signales &= {s for s, e in appareils.items() if e in ("unauthorized", "no")}
         await asyncio.sleep(2)
 
 
@@ -602,7 +658,7 @@ def main():
         for autre in autres:
             print(f"    http://{autre}:{args.port}/?k={jeton}")
     chemin_adb = trouver_adb()
-    if chemin_adb is None and sys.platform == "win32":
+    if chemin_adb is None and (WINDOWS or LINUX):
         chemin_adb = telecharger_adb()
     if chemin_adb:
         print("\n  Par câble USB (débogage USB activé) : branche le téléphone, la manette s'y ouvre toute seule.")
@@ -625,7 +681,9 @@ def main():
     print("\n  Rien ne se passe sur le téléphone ? Voir « Dépannage » dans le README.")
     print("  Ctrl+C pour arrêter.\n", flush=True)
 
-    if not args.sans_navigateur:
+    # Sans bureau graphique, webbrowser lancerait un navigateur texte dans ce terminal.
+    bureau = WINDOWS or os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+    if not args.sans_navigateur and bureau:
         async def ouvrir_qr(app):
             # on_startup passe avant l'écoute du port : on laisse le serveur démarrer.
             asyncio.get_running_loop().call_later(
@@ -636,7 +694,8 @@ def main():
         web.run_app(app, host="0.0.0.0", port=args.port, print=None, access_log=None)
     except OSError as erreur:
         print(f"\nImpossible d'écouter sur le port {args.port} ({erreur}).", file=sys.stderr)
-        print("Le serveur tourne peut-être déjà, ou essaie avec --port 8766.", file=sys.stderr)
+        print(f"Le serveur tourne peut-être déjà, ou essaie avec « {LANCEUR} --port 8766 ».",
+              file=sys.stderr)
         sys.exit(1)
 
 

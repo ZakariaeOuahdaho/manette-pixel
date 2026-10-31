@@ -2,8 +2,9 @@
 
 *English · [Français](README.fr.md)*
 
-Turn your phone into an **Xbox 360 controller** for your Windows PC. You don't install
-anything on the phone: it opens a web page in Chrome, and games see a real Xbox controller.
+Turn your phone into an **Xbox 360 controller** for your Windows or Linux PC. You don't
+install anything on the phone: it opens a web page in Chrome, and games see a real Xbox
+controller.
 
 ![The controller on the phone, in landscape](docs/capture.jpg)
 
@@ -13,7 +14,7 @@ anything on the phone: it opens a web page in Chrome, and games see a real Xbox 
 
 ## Requirements
 
-- Windows 10 or 11, with internet access for the first setup
+- Windows 10 or 11, or Linux ([see below](#linux)), with internet access for the first setup
 - An Android phone with Chrome. An iPhone may work over Wi-Fi without rumble; this is untested.
 - A USB **data** cable, or a Wi-Fi network shared by the phone and the PC
 
@@ -31,6 +32,18 @@ Python and the controller driver are installed automatically if they're missing.
    It's ready when a QR code appears. Keep that window open while you play.
 3. **For the cable** (recommended): on the phone, tap *Settings → About phone → Build number*
    7 times. Then turn on *Settings → System → Developer options → **USB debugging***.
+
+### Linux
+
+Instead of `lancer.bat`, run `./lancer.sh`, or `bash lancer.sh` if it isn't executable.
+- It needs **Python 3.10+ with venv** and **libevdev**. If either is missing, it prints the
+  install command for your distro.
+- On the first run, it offers to install a **udev rule** (sudo, once). The rule lets your
+  account create the virtual controller (`/dev/uinput`) and talk to the phone over USB.
+  If the controller is still refused, log out and back in.
+- Games, Steam and Proton see a standard Xbox 360 pad, with rumble. The status pill shows
+  the controller number instead of the player number, because Linux doesn't report it.
+- With `ufw`, open the Wi-Fi port with `sudo ufw allow 8765/tcp`.
 
 ## Play
 
@@ -67,12 +80,13 @@ Wi-Fi: these networks block devices from reaching each other.
 | The game ignores the controller | Check that it shows up in `joy.cpl` (Win+R). Some games need the controller connected before they start. |
 | A gamepad test site sees nothing | Reload the page, click inside it, then press **A**. The Xbox button opens Game Bar instead. |
 | `Port 8765` in use | The server is already running: close the other window, or run `lancer.bat --port 8766` |
-| Any other setup error | Delete the `.venv` folder and run `lancer.bat` again |
+| Linux: *no permission* for `/dev/uinput` or the USB port | Run `./lancer.sh` again, accept the rule, then log out and back in |
+| Any other setup error | Delete the `.venv` folder (`.venv-linux` on Linux) and run the launcher again |
 
 ## How it works
 
 ```
-Phone (Chrome) ──WebSocket, cable or Wi-Fi──▶ serveur.py ──vgamepad──▶ ViGEmBus ──▶ game
+Phone (Chrome) ──WebSocket, cable or Wi-Fi──▶ serveur.py ──vgamepad──▶ ViGEmBus (Windows) / uinput (Linux) ──▶ game
 ```
 
 - Every message carries the **full state**, so a lost message can't leave a button stuck.

@@ -2,7 +2,7 @@
 
 *[English](README.md) · Français*
 
-Ton téléphone devient une **manette Xbox 360** pour ton PC Windows. Tu n'as rien à
+Ton téléphone devient une **manette Xbox 360** pour ton PC Windows ou Linux. Tu n'as rien à
 installer sur le téléphone : il ouvre une page dans Chrome, et les jeux voient une vraie
 manette Xbox.
 
@@ -16,7 +16,8 @@ manette Xbox.
 
 ## Ce qu'il te faut
 
-- Un PC **Windows 10 ou 11**, connecté à Internet pour la première installation.
+- Un PC **Windows 10 ou 11**, ou **Linux** ([voir plus bas](#sous-linux)), connecté à
+  Internet pour la première installation.
 - Un téléphone **Android** avec Chrome. Un iPhone peut marcher en Wi-Fi, sans vibrations,
   mais ce n'est pas testé.
 - Un **câble USB** qui transmet les données, pas un câble de charge seule. Un câble de
@@ -63,6 +64,28 @@ que tu joues : la fermer arrête la manette.
 2. *Paramètres → Système → Options pour les développeurs* : active **Débogage USB**.
 
 > Tu peux sauter cette étape si tu utilises seulement le Wi-Fi.
+
+### Sous Linux
+
+Les étapes 1 et 3 sont les mêmes. À l'étape 2, à la place de `lancer.bat`, lance dans un
+terminal, depuis le dossier extrait :
+
+```
+./lancer.sh
+```
+
+S'il n'est pas exécutable, lance `bash lancer.sh`. Ce qui peut se passer :
+
+| Ce qui s'affiche | Ce qu'il faut faire |
+|---|---|
+| « Il faut Python 3.10 ou plus, avec venv » ou « Il faut la bibliothèque libevdev » | Lance la commande affichée pour ta distribution (apt, dnf ou pacman), puis relance `./lancer.sh`. |
+| « Une règle système est nécessaire… L'installer maintenant ? » | Réponds **O** et tape ton mot de passe. C'est à faire une seule fois : la règle permet à ton compte de créer la manette virtuelle (`/dev/uinput`) et de parler au téléphone en USB. |
+| « Pas le droit de créer une manette virtuelle » | La règle est posée, mais ta session ne l'a pas encore prise en compte : déconnecte-toi puis reconnecte-toi. |
+
+Les jeux, Steam et Proton voient une manette Xbox 360 standard, vibrations comprises.
+La pastille affiche le numéro de manette au lieu du numéro de joueur, que Linux ne
+transmet pas. Si tu utilises le pare-feu `ufw`, ouvre le port Wi-Fi avec
+`sudo ufw allow 8765/tcp`.
 
 ---
 
@@ -180,7 +203,8 @@ ne compte pas, car il ouvre la Game Bar par-dessus.
   [ViGEmBus releases](https://github.com/nefarius/ViGEmBus/releases), redémarre le PC, puis relance.
 - *« Python n'a pas pu être installé »* : installe **Python 3.12** depuis
   [python.org](https://www.python.org/downloads/) en cochant **Add python.exe to PATH**.
-- Dans tous les autres cas : supprime le dossier **`.venv`** et relance `lancer.bat`.
+- Dans tous les autres cas : supprime le dossier **`.venv`** (**`.venv-linux`** sous Linux)
+  et relance `lancer.bat` (ou `./lancer.sh`).
   L'installation se refait proprement.
 
 ---
@@ -212,7 +236,7 @@ ne compte pas, car il ouvre la Game Bar par-dessus.
   classique est désactivée).
 
 ```
-Téléphone (Chrome) ──WebSocket, câble ou Wi-Fi──▶ serveur.py ──vgamepad──▶ ViGEmBus ──▶ le jeu
+Téléphone (Chrome) ──WebSocket, câble ou Wi-Fi──▶ serveur.py ──vgamepad──▶ ViGEmBus (Windows) / uinput (Linux) ──▶ le jeu
 ```
 
 ## Options
@@ -226,6 +250,7 @@ lancer.bat --sans-navigateur    n'ouvre pas la page QR sur le PC
 ## Fichiers
 
 - `lancer.bat` : installe ce qui manque (Python, dépendances), puis démarre le serveur.
+- `lancer.sh` : l'équivalent sous Linux, qui pose aussi la règle udev.
 - `serveur.py` : le serveur web et la manette virtuelle. Il installe aussi le pilote
   ViGEmBus et télécharge adb (outils officiels Google) au premier lancement.
 - `web/` : l'interface du téléphone (`index.html`, `style.css`, `app.js`), sans dépendance.
